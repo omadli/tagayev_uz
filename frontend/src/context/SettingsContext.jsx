@@ -16,40 +16,35 @@ export const SettingsProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(key);
       return saved ? JSON.parse(saved) : defaultValue;
-    } catch {
+    } catch (error) {
+      console.warn(
+        `Error parsing localStorage key "${key}". Corrupted data will be removed.`,
+        error
+      );
+      localStorage.removeItem(key);
       return defaultValue;
     }
   };
-  const [theme, setTheme] = useState(() =>
-    localStorage.getItem("theme")
-      ? JSON.parse(localStorage.getItem("theme"))
-      : "light"
-  );
+
+  const [theme, setTheme] = useState(() => getInitialState("theme", "light"));
   const [menuPosition, setMenuPosition] = useState(() =>
     getInitialState("menuPosition", "vertical")
   );
   const [layoutWidth, setLayoutWidth] = useState(() =>
     getInitialState("layoutWidth", "full")
   );
-
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() =>
-    localStorage.getItem("selectedBranchId")
-      ? JSON.parse(localStorage.getItem("selectedBranchId"))
-      : null
+    getInitialState("selectedBranchId", null)
   );
   const [branchesLoading, setBranchesLoading] = useState(true);
 
   const hasFetchedBranches = useRef(false);
 
-  // --- THEME FIX: This effect is the single source of truth for theme classes ---
   useEffect(() => {
-    const root = window.document.documentElement; // The <html> element
-
-    // 1. Always start with a clean slate
+    const root = window.document.documentElement;
     root.classList.remove("light", "dark", "aralash");
-
-    root.classList.add(theme); // Add the current theme class
+    root.classList.add(theme);
     localStorage.setItem("theme", JSON.stringify(theme));
   }, [theme]);
 
@@ -63,7 +58,6 @@ export const SettingsProvider = ({ children }) => {
       .then((res) => {
         const fetchedBranches = res.data;
         setBranches(fetchedBranches);
-
         const currentBranchIsValid = fetchedBranches.some(
           (b) => b.id === selectedBranchId
         );
@@ -74,7 +68,6 @@ export const SettingsProvider = ({ children }) => {
           const defaultBranchId = fetchedBranches[0].id;
           setSelectedBranchId(defaultBranchId);
         }
-        // Mark as fetched so this effect won't run again
         hasFetchedBranches.current = true;
       })
       .catch((error) => {
@@ -84,9 +77,8 @@ export const SettingsProvider = ({ children }) => {
       .finally(() => {
         setBranchesLoading(false);
       });
-  }, []); // The empty dependency array [] is CRITICAL. It ensures this runs only once.
+  }, [selectedBranchId]);
 
-  // This effect saves the selected branch ID whenever it changes
   useEffect(() => {
     if (selectedBranchId) {
       localStorage.setItem(
@@ -96,7 +88,6 @@ export const SettingsProvider = ({ children }) => {
     }
   }, [selectedBranchId]);
 
-  // These effects save the other settings
   useEffect(() => {
     localStorage.setItem("menuPosition", JSON.stringify(menuPosition));
   }, [menuPosition]);
