@@ -7,12 +7,25 @@ import {
   Briefcase, // Xodimlar
   DollarSign, // To'lovlar
   UserCheck, // Davomat
+  DoorOpen, // Xonalar (Rooms)
+  BookCopy, // Kurslar (Courses)
 } from "lucide-react";
 import {
   FaChartLine, // Moliya
   FaUserGraduate, // O'quvchilar
   FaChalkboardTeacher, // O'qituvchilar
+  FaBuilding, // Office
+  FaSms, // SMS,
+  FaUsersCog, // CEO,
+  FaHistory, // Harakatlar tarixi
+  FaSitemap, // Fliallar
+  FaRobot, // Bot xabarnoma
+  FaDollarSign, // To'lovlar
+  FaWallet,  // To'lov turlari
+  FaWhmcs, // Asosiy sozlamalar
+  FaUserSecret, // Tizimga kirishlar
 } from "react-icons/fa";
+import { SiSimplelogin } from "react-icons/si"; // Yuborilgan SMS lar
 
 export const navLinks = [
   { name: "Bosh sahifa", icon: Home, path: "/" },
@@ -25,8 +38,47 @@ export const navLinks = [
     name: "Sozlamalar",
     icon: Settings,
     children: [
-      { name: "CRM Sozlamalari", icon: Settings, path: "/settings/crm" },
-      { name: "Xodimlar", icon: Briefcase, path: "/staff" },
+      {
+        name: "Asosiy sozlamalar",
+        icon: FaWhmcs,
+        children: [
+          {
+            name: "Fliallar",
+            icon: FaSitemap,
+            path: "/settings/office/branches",
+          },
+          { name: "Xonalar", icon: DoorOpen, path: "/settings/office/rooms" },
+          { name: "To'lov turlari", icon: FaWallet, path: "/settings/office/payment-types" },
+        ],
+      },
+      { name: "CEO", icon: FaUsersCog, path: "/settings/ceo" },
+      { name: "SMS Sozlamalari", icon: FaSms, path: "/settings/sms" },
+      {
+        name: "Harakatlar tarixi",
+        icon: FaHistory,
+        children: [
+          {
+            name: "To'lovlar",
+            icon: FaDollarSign,
+            path: "/settings/logs/payments",
+          },
+          {
+            name: "Tizimga kirishlar",
+            icon: FaUserSecret,
+            path: "/settings/logs/logins",
+          },
+          {
+            name: "Bot xabarnoma",
+            icon: FaRobot,
+            path: "/settings/logs/bot-notification",
+          },
+          {
+            name: "Yuborilgan SMS lar",
+            icon: SiSimplelogin,
+            path: "/settings/logs/sms",
+          },
+        ],
+      },
     ],
   },
   { name: "Moliya", icon: FaChartLine, path: "/finance" },

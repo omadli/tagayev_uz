@@ -5,37 +5,74 @@ import { FiChevronRight, FiChevronLeft } from "react-icons/fi";
 import clsx from "clsx";
 import { Tooltip } from "react-tooltip";
 
-// This is a sub-component used only within the sidebar.
-// It handles rendering both simple links and dropdowns in the EXPANDED view.
-const ExpandedNavItem = ({ item }) => {
+const NavItem = ({ item, isCollapsed, level = 0 }) => {
   const { pathname } = useLocation();
-  const isParentOfActiveLink = item.children?.some((child) =>
-    pathname.startsWith(child.path)
-  );
+
+  const isChildActive = (item) => {
+    if (!item.children) return false;
+    return item.children.some(
+      (child) => pathname.startsWith(child.path) || isChildActive(child)
+    );
+  };
+
+  const isParentOfActiveLink = isChildActive(item);
   const [isSubMenuOpen, setIsSubMenuOpen] = useState(isParentOfActiveLink);
 
-  // Render a dropdown button if the item has children
+  const linkClasses =
+    "flex items-center justify-between w-full py-2.5 text-base font-medium text-left rounded-lg transition-colors";
+  const activeClasses = "active-link bg-blue-600 text-white";
+  const inactiveClasses =
+    "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700";
+  const mixedThemeInactive =
+    "theme-mixed:text-gray-300 theme-mixed:hover:bg-gray-700 theme-mixed:hover:text-white";
+
   if (item.children) {
     return (
       <div>
         <button
           onClick={() => setIsSubMenuOpen(!isSubMenuOpen)}
-          className="flex items-center justify-between w-full px-3 py-2.5 text-base font-medium text-left rounded-lg transition-colors text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          style={{ paddingLeft: `${12 + level * 24}px` }}
+          className={clsx(
+            linkClasses,
+            isParentOfActiveLink
+              ? "text-blue-600 dark:text-blue-400"
+              : inactiveClasses,
+            mixedThemeInactive
+          )}
         >
           <div className="flex items-center">
             <item.icon className="mr-3 flex-shrink-0" size={20} />
-            <span>{item.name}</span>
+            {/* Hide text when the sidebar is collapsed */}
+            <span
+              className={clsx(
+                "transition-opacity",
+                isCollapsed ? "opacity-0" : "opacity-100"
+              )}
+            >
+              {item.name}
+            </span>
           </div>
           <FiChevronRight
-            className={clsx("transition-transform", {
-              "rotate-90": isSubMenuOpen,
-            })}
+            className={clsx(
+              "transition-transform flex-shrink-0",
+              { "rotate-90": isSubMenuOpen },
+              isCollapsed ? "opacity-0" : "opacity-100"
+            )}
           />
         </button>
-        {isSubMenuOpen && (
-          <div className="mt-1 pl-7 space-y-1">
+
+        {/* Conditionally render the nested children */}
+        {isSubMenuOpen && !isCollapsed && (
+          <div className="mt-1 space-y-1">
+            {/* --- RECURSION HAPPENS HERE --- */}
+            {/* The component renders its own children, passing an incremented level. */}
             {item.children.map((child) => (
-              <ExpandedNavItem key={child.name} item={child} />
+              <NavItem
+                key={child.name}
+                item={child}
+                isCollapsed={isCollapsed}
+                level={level + 1}
+              />
             ))}
           </div>
         )}
@@ -43,21 +80,29 @@ const ExpandedNavItem = ({ item }) => {
     );
   }
 
-  // Render a simple NavLink if the item has no children
+  // --- RENDER LOGIC FOR ITEMS WITHOUT CHILDREN (A SIMPLE LINK) ---
   return (
     <NavLink
       to={item.path}
+      style={{ paddingLeft: `${12 + level * 24}px` }}
       className={({ isActive }) =>
         clsx(
-          "flex items-center w-full px-3 py-2.5 text-base font-medium text-left rounded-lg transition-colors",
-          isActive
-            ? "active-link bg-blue-600 text-white"
-            : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+          linkClasses,
+          isActive ? activeClasses : [inactiveClasses, mixedThemeInactive]
         )
       }
     >
-      <item.icon className="mr-3 flex-shrink-0" size={20} />
-      <span>{item.name}</span>
+      <div className="flex items-center">
+        <item.icon className="mr-3 flex-shrink-0" size={20} />
+        <span
+          className={clsx(
+            "transition-opacity",
+            isCollapsed ? "opacity-0" : "opacity-100"
+          )}
+        >
+          {item.name}
+        </span>
+      </div>
     </NavLink>
   );
 };
@@ -65,7 +110,6 @@ const ExpandedNavItem = ({ item }) => {
 // This is the main Sidebar component
 const DashboardSidebar = ({ isCollapsed, toggleCollapse }) => {
   return (
-    // The main container's width changes based on the 'isCollapsed' prop
     <aside
       className={clsx(
         "sidebar h-screen bg-white dark:bg-gray-800 flex flex-col border-r border-gray-100 dark:border-gray-700 transition-all duration-300",
@@ -74,7 +118,6 @@ const DashboardSidebar = ({ isCollapsed, toggleCollapse }) => {
     >
       {/* Top section with Logo and the Collapse button */}
       <div className="p-4 h-[68px] flex-shrink-0 flex items-center justify-between border-b border-gray-100 dark:border-gray-700">
-        {/* Logo and Text are only shown when not collapsed */}
         {!isCollapsed && (
           <div className="flex items-center">
             <img
@@ -102,33 +145,12 @@ const DashboardSidebar = ({ isCollapsed, toggleCollapse }) => {
 
       {/* The scrollable navigation area */}
       <nav className="flex-1 p-2 space-y-1.5 overflow-y-auto">
-        {navLinks.map((link) =>
-          isCollapsed ? (
-            // In collapsed mode, render a simple icon link with a tooltip
-            <NavLink
-              key={link.name}
-              to={!link.children ? link.path : "#"} // Dropdowns aren't clickable when collapsed
-              data-tooltip-id="nav-tooltip"
-              data-tooltip-content={link.name}
-              className={({ isActive }) =>
-                clsx(
-                  "flex items-center justify-center p-3 rounded-lg",
-                  isActive && !link.children
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                )
-              }
-            >
-              <link.icon size={20} />
-            </NavLink>
-          ) : (
-            // In expanded mode, render the full NavItem with text and dropdowns
-            <ExpandedNavItem key={link.name} item={link} />
-          )
-        )}
+        {navLinks.map((link) => (
+          <NavItem key={link.name} item={link} isCollapsed={isCollapsed} />
+        ))}
       </nav>
 
-      {/* The Tooltip component from the library, which reads the data-* attributes */}
+      {/* The Tooltip component for collapsed icons */}
       <Tooltip id="nav-tooltip" place="right" effect="solid" className="z-50" />
     </aside>
   );
