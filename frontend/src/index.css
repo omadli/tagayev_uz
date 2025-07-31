@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --- GLOBAL DARK THEME STYLES --- */
+@layer base {
+  /* This targets the <body> tag when the dark class is present */
+  .dark body {
+    @apply bg-dark-primary text-text-light-secondary;
+  }
+}
+
+/* --- Custom styles for the Aralash (Mixed) Theme --- */
+.aralash .sidebar {
+  @apply bg-dark-secondary border-dark-tertiary;
+}
+.aralash .sidebar,
+.aralash .sidebar h1,
+.aralash .sidebar button,
+.aralash .sidebar a {
+  @apply text-text-light-primary;
+}
+.aralash .sidebar a:not(.active-link),
+.aralash .sidebar button:not(.active-link) {
+  @apply text-text-light-secondary hover:bg-dark-tertiary hover:text-white;
+}
+.aralash .sidebar .active-link {
+  @apply bg-blue-600 text-white;
+}
+
+/* Keep the animation */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+.animate-fade-in-down {
+  animation: fadeInDown 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+/* Custom styles for the reusable PhoneNumberInput component */
+.input-phone-wrapper {
+  position: relative;
+  border-radius: 0.5rem; /* rounded-lg */
+  border: 1px solid #d1d5db; /* border-gray-300 */
+}
+.dark .input-phone-wrapper {
+  border-color: #4b5563; /* dark:border-gray-600 */
+}
+
+/* Style the input field itself to be transparent and borderless */
+.PhoneInputInput {
+  border: none !important;
+  background-color: transparent !important;
+  height: 3.25rem;
+  padding-left: 0.75rem !important;
+  padding-top: 1rem !important; /* Make space for the floating label */
+  font-size: 0.875rem; /* text-sm */
+  color: #111827; /* text-gray-900 */
+}
+.dark .PhoneInputInput {
+  color: white;
+}
+.PhoneInputInput:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Style the country code part */
+.PhoneInputCountry {
+  margin: 0 0.75rem;
+  padding-top: 1rem; /* Align with the input's top padding */
+}
+
+/* Error state for the wrapper */
+.input-phone-wrapper.input-error {
+  border-color: #ef4444 !important; /* border-red-500 */
+}
+.dark .input-phone-wrapper.input-error {
+  border-color: #f87171 !important; /* dark:border-red-400 */
+}
+
+/* Focus state for the wrapper */
+.input-phone-wrapper:focus-within {
+  border-width: 2px;
+  border-color: #4f46e5 !important; /* border-blue-600 */
+  padding: 0;
+}

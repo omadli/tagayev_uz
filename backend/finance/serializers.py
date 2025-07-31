@@ -1,0 +1,101 @@
+from rest_framework import serializers
+from .models import GroupPrice, PaymentType, Transaction
+from core.models import Group, StudentGroup
+from users.models import User
+from django.core.exceptions import ValidationError as DjangoValidationError
+
+
+class GroupPriceSerializer(serializers.ModelSerializer):
+    """
+    Serializer for creating and listing GroupPrice records.
+    """
+
+    # Use PrimaryKeyRelatedField for writing, but we'll show the group name on read.
+    group_name = serializers.CharField(source="group.name", read_only=True)
+
+    class Meta:
+        model = GroupPrice
+        fields = ["id", "group", "group_name", "price", "start_date", "created_at"]
+        # Make 'group' field write-only as we display 'group_name'
+        extra_kwargs = {"group": {"write_only": True}}
+
+    def validate(self, data):
+        """
+        Check for uniqueness constraint. A group cannot have two different prices
+        starting on the same day.
+        """
+        group = data.get("group")
+        start_date = data.get("start_date")
+
+        if GroupPrice.objects.filter(group=group, start_date=start_date).exists():
+            raise serializers.ValidationError(
+                {"start_date": f"Bu sana ({start_date}) uchun narx allaqachon mavjud."}
+            )
+        return data
+
+    def create(self, validated_data):
+        instance = GroupPrice(**validated_data)
+        # instance.full_clean()  # runs clean_fields and clean
+        instance.save()
+        return instance
+
+
+class PaymentTypeSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the PaymentType model.
+    """
+
+    class Meta:
+        model = PaymentType
+        fields = ["id", "name", "is_active"]
+
+
+class PaymentCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer specifically for creating a new PAYMENT Transaction.
+    """
+
+    # We accept IDs from the frontend
+    student_group = serializers.PrimaryKeyRelatedField(
+        queryset=StudentGroup.objects.all()
+    )
+    payment_type = serializers.PrimaryKeyRelatedField(
+        queryset=PaymentType.objects.filter(is_active=True)
+    )
+    receiver = serializers.PrimaryKeyRelatedField(
+        queryset=User.objects.filter(is_active=True)
+    )
+
+    class Meta:
+        model = Transaction
+        fields = [
+            "student_group",
+            "amount",
+            "payment_type",
+            "receiver",
+            "comment",
+            "created_at",  # Allow frontend to specify payment date
+        ]
+
+    def create(self, validated_data):
+        """
+        Overrides the create method to set required fields for a payment.
+        """
+
+        # Get the current user from the context (set in the view)
+        created_by_user: User = self.context["request"].user
+        receiver: User = validated_data["receiver"]
+        if created_by_user != receiver and not (
+            created_by_user.is_ceo or created_by_user.is_superuser
+        ):
+            raise serializers.ValidationError(
+                "Siz boshqa xodimlar nomidan to'lov yarata olmaysiz"
+            )
+        # Hardcode the fields for a PAYMENT transaction
+        validated_data["transaction_type"] = Transaction.TransactionType.CREDIT
+        validated_data["category"] = Transaction.TransactionCategory.PAYMENT
+        validated_data["created_by"] = created_by_user
+
+        # The model's clean method will be called on save, ensuring receiver/type are correct.
+        transaction = Transaction.objects.create(**validated_data)
+        return transaction
