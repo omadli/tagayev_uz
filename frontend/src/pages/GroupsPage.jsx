@@ -8,7 +8,7 @@ import React, {
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
-import { useOutletContext } from "react-router-dom";
+import { useSearchParams } from 'react-router-dom';
 import {
   Plus,
   Search,
@@ -64,6 +64,7 @@ const formatWeekdays = (weekdays) => {
 
 const GroupsPage = () => {
   const { theme, selectedBranchId } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
   // --- STATE MANAGEMENT ---
   const [groups, setGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -71,8 +72,8 @@ const GroupsPage = () => {
     search: "",
     is_archived: false,
     branch: selectedBranchId || null, // This should come from a context or global state
-    teacher: null,
-    room: null,
+    teacher: searchParams.get('teacher') || null,
+    room: searchParams.get('room') || null,
     weekdays: null,
   });
   // State for filter dropdowns
@@ -231,6 +232,15 @@ const GroupsPage = () => {
     }
   };
 
+  const selectedRoomOption = useMemo(() => 
+        rooms.find(option => option.value == filters.room) || null, 
+        [filters.room, rooms]
+    );
+    const selectedTeacherOption = useMemo(() => 
+        teachers.find(option => option.value == filters.teacher) || null, 
+        [filters.teacher, teachers]
+    );
+
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-GB");
   // --- DATA TABLE COLUMNS ---
   const columns = [
@@ -363,12 +373,14 @@ const GroupsPage = () => {
           <Select
             placeholder="Xona"
             options={rooms}
+            value={selectedRoomOption}
             isClearable
             onChange={(opt) => handleFilterChange("room", opt)}
           />
           <Select
             placeholder="O'qituvchi"
             options={teachers}
+            value={selectedTeacherOption}
             isClearable
             onChange={(opt) => handleFilterChange("teacher", opt)}
           />

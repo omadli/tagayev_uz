@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
@@ -16,6 +17,7 @@ import RoomModal from "../components/rooms/RoomModal"; // Import the new modal
 
 const RoomsPage = () => {
   const { theme, selectedBranchId } = useSettings();
+  const navigate = useNavigate();
   const [rooms, setRooms] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showArchived, setShowArchived] = useState(false);
@@ -60,6 +62,13 @@ const RoomsPage = () => {
   const handleEdit = (room) => {
     setSelectedRoom(room);
     setIsModalOpen(true);
+  };
+  const handleViewGroups = (room) => {
+    if (room.active_groups_count > 0) {
+      navigate(`/groups?room=${room.id}`);
+    } else {
+      toast.error("Bu xonada o'tiladigan aktiv kurslar yo'q");
+    }
   };
   const handleArchive = async (room) => {
     const isArchiving = !room.is_archived;
@@ -212,7 +221,7 @@ const RoomsPage = () => {
           {
             label: "Guruhlarni ko'rish",
             icon: Eye,
-            onClick: () => {},
+            onClick: () => handleViewGroups(actionPopup.data),
           },
           {
             label: "Tahrirlash",
