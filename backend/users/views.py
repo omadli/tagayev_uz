@@ -11,6 +11,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.filters import OrderingFilter, SearchFilter
+from django.contrib.auth.signals import user_logged_in
 
 from core.models import Group
 from .models import User, LoginLog
@@ -47,21 +48,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
             try:
                 # Find the user who just logged in
                 user = User.objects.get(phone_number=request.data["phone_number"])
-
-                # Parse user agent string from request headers
-                user_agent_string = request.META.get("HTTP_USER_AGENT", "")
-                user_agent = parse(user_agent_string)
-                ip_address = request.META.get("REMOTE_ADDR")
-
-                # Create the log entry
-                LoginLog.objects.create(
-                    user=user,
-                    ip_address=ip_address,
-                    user_agent=user_agent_string,
-                    device=user_agent.device.family,
-                    browser=user_agent.browser.family,
-                    os=user_agent.os.family,
-                )
+                user_logged_in.send(sender=user.__class__, request=request, user=user)
             except User.DoesNotExist:
                 # This case is unlikely if login succeeded, but good for safety
                 pass
