@@ -214,6 +214,23 @@ const GroupsPage = () => {
     }
   };
 
+  const handleDelete = async (group) => {
+    if (window.confirm(`${group.name} ni o'chirishga ishonchingiz komilmi?`)) {
+      const toastId = toast.loading("O'chirilmoqda...");
+      try {
+        await api.delete(`/core/groups/${group.id}/`);
+        toast.success("Muvaffaqiyatli o'chirildi", { id: toastId });
+        fetchGroups();
+      } catch (error) {
+        const errorMsg =
+          error.response?.data?.detail ||
+          error.response?.data?.[0] ||
+          "Xatolik yuz berdi";
+        toast.error(errorMsg, { id: toastId });
+      }
+    }
+  };
+
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-GB");
   // --- DATA TABLE COLUMNS ---
   const columns = [
@@ -283,7 +300,7 @@ const GroupsPage = () => {
       format: (row) => formatDate(row.end_date),
     },
     {
-      name: "",
+      name: "Harakatlar",
       cell: (row) => (
         <button onClick={(e) => openActionPopup(e, row)}>
           <MoreVertical size={20} />
@@ -390,11 +407,7 @@ const GroupsPage = () => {
           responsive
           pagination
           highlightOnHover
-          customStyles={
-            theme === "dark" || theme === "aralash"
-              ? darkThemeStyles
-              : customStyles
-          }
+          customStyles={theme === "dark" ? darkThemeStyles : customStyles}
           progressComponent={<ProgressComponent />}
           noDataComponent={<NoDataComponent />}
           paginationComponentOptions={paginationComponentOptions}
@@ -450,7 +463,7 @@ const GroupsPage = () => {
             label: "O'chirish",
             icon: Trash2,
             className: "text-red-600",
-            onClick: () => {},
+            onClick: () => handleDelete(actionPopup.data),
           },
         ]}
       />
