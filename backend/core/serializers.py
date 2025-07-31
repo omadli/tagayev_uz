@@ -14,9 +14,15 @@ class BranchSerializer(serializers.ModelSerializer):
 
 
 class RoomSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Room model. Includes a calculated count of active groups.
+    """
+    active_groups_count = serializers.IntegerField(read_only=True)
+    branch = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.filter(is_archived=False))
+    
     class Meta:
         model = Room
-        fields = ["id", "name", "branch", "capacity", "extra_info"]
+        fields = ["id", "name", "branch", "capacity", "extra_info", "is_archived", "active_groups_count"]
 
 
 class DashboardStatsSerializer(serializers.Serializer):

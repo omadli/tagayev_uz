@@ -12,6 +12,7 @@ import TeachersPage from "./pages/TeachersPage";
 import StudentsPage from "./pages/StudentsPage";
 import StaffPage from "./pages/StaffPage"; // Assuming this page also exists as planned
 import GroupsPage from "./pages/GroupsPage";
+import RoomsPage from "./pages/RoomsPage";
 
 // This component protects all routes that require a logged-in user
 const PrivateRoute = () => {
@@ -51,8 +52,8 @@ function App() {
         <Route path="groups" element={<GroupsPage />} />
         <Route path="teachers" element={<TeachersPage />} />
         <Route path="students" element={<StudentsPage />} />
+        <Route path="settings/office/rooms" element={<RoomsPage />} />
         {/* <Route path="leads" element={<LeadsPage />} /> */}
-        {/* <Route path="groups" element={<GroupsPage />} /> */}
       </Route>
 
       {/* A fallback route to catch any undefined paths and redirect to the appropriate starting page. */}

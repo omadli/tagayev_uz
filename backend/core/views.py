@@ -54,15 +54,62 @@ class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = RoomSerializer
     permission_classes = [IsAuthenticatedOrAdminForUnsafe]
     filter_backends = [DjangoFilterBackend, SearchFilter]
+    search_fields = ['name', 'extra_info']
+    search_param = 'search'
     filterset_fields = ["branch"]
 
     def get_queryset(self):
-        queryset = Room.objects.all()
-        is_archived = (
-            self.request.query_params.get("is_archived", "false").lower() == "true"
+        today = timezone.now().date()
+        
+        queryset = Room.objects.select_related('branch').annotate(
+            active_groups_count=Count(
+                'group', 
+                filter=Q(group__is_archived=False, group__end_date__gte=today)
+            )
         )
-        return queryset.filter(is_archived=is_archived).order_by("-created_at")
+        
+        is_archived = self.request.query_params.get('is_archived', 'false').lower() == 'true'
+        return queryset.filter(is_archived=is_archived).order_by('name')
+    
+    def _check_for_active_groups(self, room):
+        """Helper method to check for active groups in a room."""
+        today = timezone.now().date()
+        active_groups = room.group_set.filter(is_archived=False, end_date__gte=today)
+        if active_groups.exists():
+            raise ValidationError(
+                "Bu xonani o'chirib/arxivlab bo'lmaydi, chunki unda faol guruhlar mavjud."
+            )
 
+    def perform_destroy(self, instance):
+        # Run our safety check before allowing deletion
+        self._check_for_active_groups(instance)
+        super().perform_destroy(instance)
+
+    def get_object(self):
+        queryset = Room.objects.all()
+        obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
+    
+    @action(detail=True, methods=['post'])
+    def archive(self, request, pk=None):
+        room = self.get_object()
+        # Run our safety check before allowing archiving
+        self._check_for_active_groups(room)
+        
+        room.is_archived = True
+        room.archived_at = timezone.now()
+        room.save()
+        return Response({'status': 'Room archived'}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        room = self.get_object()
+        room.is_archived = False
+        room.archived_at = None
+        room.save()
+        return Response({'status': 'Room restored'}, status=status.HTTP_200_OK)
+    
 
 class DashboardStatsView(APIView):
     """
