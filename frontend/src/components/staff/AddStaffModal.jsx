@@ -257,7 +257,7 @@ const AddStaffModal = ({
                 id="password"
                 label="Parol"
                 type={showPassword ? "text" : "password"}
-                register={register("password")}
+                {...register("password")}
                 error={errors.password}
               />
               <button
