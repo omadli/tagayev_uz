@@ -22,56 +22,51 @@ const PrivateRoute = () => {
 
   // If the user is authenticated, render the main DashboardLayout.
   // The <Outlet/> inside DashboardLayout will then render the specific child route (e.g., DashboardPage or TeachersPage).
-  return user ? (
-    <SettingsProvider>
-      <DashboardLayout />
-    </SettingsProvider>
-  ) : (
-    // If not authenticated, redirect to the login page
-    <Navigate to="/login" />
-  );
+  return user ? <DashboardLayout /> : <Navigate to="/login" />;
 };
 
 function App() {
   const { user } = useAuth();
 
   return (
-    <Routes>
-      {/* The login page is a public route. If a user is already logged in, redirect them to the dashboard. */}
-      <Route
-        path="/login"
-        element={user ? <Navigate to="/" /> : <LoginPage />}
-      />
+    <SettingsProvider>
+      <Routes>
+        {/* The login page is a public route. If a user is already logged in, redirect them to the dashboard. */}
+        <Route
+          path="/login"
+          element={user ? <Navigate to="/" /> : <LoginPage />}
+        />
 
-      {/* All dashboard routes are nested under the PrivateRoute. */}
-      {/* This ensures that only authenticated users can access them. */}
-      <Route path="/" element={<PrivateRoute />}>
-        {/* --- Public route within the app (all logged-in users can see) --- */}
+        {/* All dashboard routes are nested under the PrivateRoute. */}
+        {/* This ensures that only authenticated users can access them. */}
+        <Route path="/" element={<PrivateRoute />}>
+          {/* --- Public route within the app (all logged-in users can see) --- */}
 
-        {/* Route for Teachers */}
-        <Route element={<RoleBasedRoute allowedRoles={["Teacher"]} />}>
-          <Route path="mygroups" element={<MyGroupsPage />} />
-          <Route path="my-students" element={<MyStudentsPage />} />
+          {/* Route for Teachers */}
+          <Route element={<RoleBasedRoute allowedRoles={["Teacher"]} />}>
+            <Route path="mygroups" element={<MyGroupsPage />} />
+            <Route path="my-students" element={<MyStudentsPage />} />
+          </Route>
+
+          {/* --- Admin & CEO Only Routes --- */}
+          <Route element={<RoleBasedRoute allowedRoles={["Admin", "CEO"]} />}>
+            <Route index element={<DashboardPage />} />
+            <Route path="students" element={<StudentsPage />} />
+            <Route path="groups" element={<GroupsPage />} />
+            <Route path="teachers" element={<TeachersPage />} />
+          </Route>
+
+          {/* --- CEO Only Routes --- */}
+          <Route element={<RoleBasedRoute allowedRoles={["CEO"]} />}>
+            <Route path="staff" element={<StaffPage />} />
+            <Route path="settings/office/rooms" element={<RoomsPage />} />
+            {/* Add other CEO-only settings pages here */}
+          </Route>
         </Route>
 
-        {/* --- Admin & CEO Only Routes --- */}
-        <Route element={<RoleBasedRoute allowedRoles={["Admin", "CEO"]} />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="students" element={<StudentsPage />} />
-          <Route path="groups" element={<GroupsPage />} />
-          <Route path="teachers" element={<TeachersPage />} />
-        </Route>
-
-        {/* --- CEO Only Routes --- */}
-        <Route element={<RoleBasedRoute allowedRoles={["CEO"]} />}>
-          <Route path="staff" element={<StaffPage />} />
-          <Route path="settings/office/rooms" element={<RoomsPage />} />
-          {/* Add other CEO-only settings pages here */}
-        </Route>
-      </Route>
-
-      <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
-    </Routes>
+        <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
+      </Routes>
+    </SettingsProvider>
   );
 }
 

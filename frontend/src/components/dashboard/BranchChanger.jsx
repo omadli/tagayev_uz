@@ -37,7 +37,7 @@ const BranchChanger = () => {
   const selectedBranch = branches.find((b) => b.id === selectedBranchId);
 
   // --- RENDER FIX: The loading/empty state logic is now after the hooks ---
-  if (branchesLoading) {
+  if (branchesLoading || !selectedBranch) {
     return (
       <div className="bg-gray-200 dark:bg-dark-tertiary rounded-lg h-10 w-36 animate-pulse"></div>
     );

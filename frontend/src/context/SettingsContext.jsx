@@ -7,11 +7,13 @@ import React, {
 } from "react";
 import { toast } from "react-hot-toast";
 import api from "../services/api";
+import { useAuth } from "./AuthContext";
 
 const SettingsContext = createContext();
 export const useSettings = () => useContext(SettingsContext);
 
 export const SettingsProvider = ({ children }) => {
+  const { user } = useAuth();
   const getInitialState = (key, defaultValue) => {
     try {
       const saved = localStorage.getItem(key);
@@ -49,6 +51,10 @@ export const SettingsProvider = ({ children }) => {
   }, [theme]);
 
   useEffect(() => {
+    if (!user) {
+      setBranchesLoading(false);
+      return;
+    }
     if (hasFetchedBranches.current) {
       return;
     }
