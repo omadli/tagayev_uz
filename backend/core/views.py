@@ -362,6 +362,10 @@ class StudentViewSet(viewsets.ModelViewSet):
                 balance=F("total_credits") - F("total_debits"),
             )
         )
+        
+        user: User = self.request.user
+        if not (user.is_ceo or user.is_admin or user.is_superuser):
+            queryset = queryset.filter(group_memberships__group__teacher__id=user.pk)
 
         is_archived = (
             self.request.query_params.get("is_archived", "false").lower() == "true"

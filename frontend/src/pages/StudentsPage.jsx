@@ -5,7 +5,6 @@ import DataTable from "react-data-table-component";
 import {
   Plus,
   Search,
-  User,
   Sheet,
   MessageSquare,
   MoreVertical,
@@ -18,6 +17,7 @@ import {
 } from "lucide-react";
 import Select from "react-select";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
 import clsx from "clsx";
 import { BiArchiveIn, BiArchiveOut } from "react-icons/bi";
 import {
@@ -27,8 +27,8 @@ import {
   ProgressComponent,
 } from "../data/dataTableStyles.jsx";
 
-import Avatar from '@mui/material/Avatar';
-import {stringAvatar} from "../components/ui/Avatar";
+import Avatar from "@mui/material/Avatar";
+import { stringAvatar } from "../components/ui/Avatar";
 
 // Import child components
 import ActionPopup from "../components/ui/ActionPopup";
@@ -37,10 +37,11 @@ import EditStudentModal from "../components/students/EditStudentModal";
 import EnrollStudentModal from "../components/students/EnrollStudentModal";
 import AddPaymentModal from "../components/finance/AddPaymentModal";
 
-const StudentsPage = () => {
-  // --- STATE MANAGEMENT ---
+const StudentsPage = ({ isMyStudentsPage = false }) => {
   // --- Get selectedBranchId from the layout ---
   const { theme, selectedBranchId } = useSettings();
+  const { user: currentUser } = useAuth();
+  // --- STATE MANAGEMENT ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
@@ -63,7 +64,7 @@ const StudentsPage = () => {
     group_status: null,
     payment_status: null,
     group_id: null,
-    teacher_id: null,
+    teacher_id: isMyStudentsPage ? currentUser.user_id : null,
   });
 
   // State to hold data for filter dropdowns
@@ -81,21 +82,37 @@ const StudentsPage = () => {
   useEffect(() => {
     const fetchFilterData = async () => {
       try {
+        if (!isMyStudentsPage) {
+          const teachersRes = await api.get(
+            "/users/teachers/?is_archived=false"
+          );
+          setTeachers(
+            teachersRes.data.map((t) => ({
+              value: t.id,
+              label: t.full_name,
+            }))
+          );
+        }
+        // For "My Students", only fetch the groups belonging to the current teacher.
+        const groupsParams = isMyStudentsPage
+          ? { teacher: currentUser.user_id }
+          : {};
         // Fetch only active groups and teachers for the filters
-        const [groupsRes, teachersRes] = await Promise.all([
-          api.get("/core/groups/?is_archived=false"), // Assuming a groups endpoint exists
-          api.get("/users/teachers/?is_archived=false"),
-        ]);
-        setGroups(groupsRes.data.map((g) => ({ value: g.id, label: g.name })));
-        setTeachers(
-          teachersRes.data.map((t) => ({ value: t.id, label: t.full_name }))
+        const groupsRes = await api.get("/core/groups/", {
+          params: groupsParams,
+        });
+        setGroups(
+          groupsRes.data.map((g) => ({
+            value: g.id,
+            label: `${g.name} - ${g.teacher_name}`,
+          }))
         );
       } catch (error) {
         toast.error("Filtr ma'lumotlarini yuklashda xatolik.");
       }
     };
     fetchFilterData();
-  }, []);
+  }, [isMyStudentsPage, currentUser.user_id]);
 
   // Callback to fetch students whenever filters change
   const fetchStudents = useCallback(async () => {
@@ -227,6 +244,58 @@ const StudentsPage = () => {
   const handleSendMessage = (student) =>
     alert(`Sending message to ${student.full_name}`);
 
+  const getStudentActions = (student) => {
+    let actions = [
+      { label: "Ko'rish", icon: Eye, onClick: () => handleView(student) },
+      {
+        label: "Izoh",
+        icon: FileText,
+        onClick: () => handleAddComment(student),
+      },
+      {
+        label: "To'lov",
+        icon: DollarSign,
+        onClick: () => handleAddPayment(student),
+      },
+      // { isSeparator: true },
+      {
+        label: "Xabar",
+        icon: MessageSquare,
+        onClick: () => handleSendMessage(student),
+      },
+    ];
+
+    // Only add admin/CEO actions if it's the main students page
+    if (!isMyStudentsPage) {
+      actions.splice(2, 0, {
+        label: "Tahrirlash",
+        icon: Edit,
+        onClick: () => handleEdit(student),
+      });
+      actions.splice(3, 0, {
+        label: "Guruhga qo'shish",
+        icon: UserPlus,
+        onClick: () => handleEnroll(student),
+      });
+      actions.push(
+        { isSeparator: true },
+        {
+          label: !student?.is_archived ? "Arxivlash" : "Arxivdan chiqarish",
+          icon: !student?.is_archived ? BiArchiveIn : BiArchiveOut,
+          onClick: () => handleArchive(student),
+          className: "text-orange-600 dark:text-orange-500",
+        },
+        {
+          label: "O'chirish",
+          icon: Trash2,
+          onClick: () => handleDelete(student),
+          className: "text-red-600 dark:text-red-500",
+        }
+      );
+    }
+    return actions;
+  };
+
   // --- FORMATTING & TABLE DEFINITION ---
   const formatCurrency = (num) =>
     new Intl.NumberFormat("fr-FR").format(num) + " so'm";
@@ -333,7 +402,7 @@ const StudentsPage = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-text-light-primary">
-            O'quvchilar
+            {isMyStudentsPage ? "Mening O'quvchilarim" : "O'quvchilar"}
           </h1>
           <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
             O'quvchilar soni: {students.length} ta
@@ -346,16 +415,42 @@ const StudentsPage = () => {
           <button className="bg-orange-100 text-orange-700 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-200 flex items-center space-x-2">
             <MessageSquare size={16} /> XABAR YUBORISH
           </button>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus size={16} /> YANGI QO'SHISH
-          </button>
+          {!isMyStudentsPage && (
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <Plus size={16} /> YANGI QO'SHISH
+            </button>
+          )}
+          <div className="flex items-center space-x-2 justify-end">
+            <label className="text-sm font-medium">Arxiv</label>
+            <button
+              id="archive-toggle"
+              onClick={() =>
+                setFilters({ ...filters, is_archived: !filters.is_archived })
+              }
+              type="button"
+              role="switch"
+              className={clsx(
+                "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
+                filters.is_archived
+                  ? "bg-blue-600"
+                  : "bg-gray-200 dark:bg-gray-600"
+              )}
+            >
+              <span
+                className={clsx(
+                  "inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
+                  filters.is_archived ? "translate-x-5" : "translate-x-0"
+                )}
+              />
+            </button>
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 dark:text-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 dark:text-gray-200">
         <div className="relative col-span-2">
           <input
             type="text"
@@ -368,12 +463,14 @@ const StudentsPage = () => {
             size={20}
           />
         </div>
-        <Select
-          placeholder="Guruhdagi holati"
-          options={groupStatusOptions}
-          isClearable
-          onChange={(opt) => handleFilterChange("group_status", opt)}
-        />
+        {!isMyStudentsPage && (
+          <Select
+            placeholder="Holati"
+            options={groupStatusOptions}
+            isClearable
+            onChange={(opt) => handleFilterChange("group_status", opt)}
+          />
+        )}
         <Select
           placeholder="To'lov holati"
           options={paymentStatusOptions}
@@ -386,37 +483,14 @@ const StudentsPage = () => {
           isClearable
           onChange={(opt) => handleFilterChange("group_id", opt)}
         />
-        <Select
-          placeholder="Ustoz"
-          options={teachers}
-          isClearable
-          onChange={(opt) => handleFilterChange("teacher_id", opt)}
-        />
-
-        <div className="flex items-center space-x-2 justify-end">
-          <label className="text-sm font-medium">Arxiv</label>
-          <button
-            id="archive-toggle"
-            onClick={() =>
-              setFilters({ ...filters, is_archived: !filters.is_archived })
-            }
-            type="button"
-            role="switch"
-            className={clsx(
-              "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-              filters.is_archived
-                ? "bg-blue-600"
-                : "bg-gray-200 dark:bg-gray-600"
-            )}
-          >
-            <span
-              className={clsx(
-                "inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                filters.is_archived ? "translate-x-5" : "translate-x-0"
-              )}
-            />
-          </button>
-        </div>
+        {!isMyStudentsPage && (
+          <Select
+            placeholder="Ustoz"
+            options={teachers}
+            isClearable
+            onChange={(opt) => handleFilterChange("teacher_id", opt)}
+          />
+        )}
       </div>
 
       <div className="bg-white dark:bg-blue-800 rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
@@ -442,56 +516,9 @@ const StudentsPage = () => {
         onClose={closeActionPopup}
         referenceElement={actionPopup.referenceElement}
         title={actionPopup.student?.full_name}
-        actions={[
-          // Define the actions for the currently selected student
-          {
-            label: "Ko'rish",
-            icon: Eye,
-            onClick: () => handleView(actionPopup.student),
-          },
-          {
-            label: "Tahrirlash",
-            icon: Edit,
-            onClick: () => handleEdit(actionPopup.student),
-          },
-          {
-            label: "Izoh",
-            icon: FileText,
-            onClick: () => handleAddComment(actionPopup.student),
-          },
-          {
-            label: "Xabar",
-            icon: MessageSquare,
-            onClick: () => handleSendMessage(actionPopup.student),
-          },
-          {
-            label: "Guruhga qo'shish",
-            icon: UserPlus,
-            onClick: () => handleEnroll(actionPopup.student),
-          },
-          {
-            label: "To'lov",
-            icon: DollarSign,
-            onClick: () => handleAddPayment(actionPopup.student),
-          },
-          { isSeparator: true },
-          {
-            label: !actionPopup.student?.is_archived
-              ? "Arxivlash"
-              : "Arxivdan chiqarish",
-            icon: !actionPopup.student?.is_archived
-              ? BiArchiveIn
-              : BiArchiveOut,
-            onClick: () => handleArchive(actionPopup.student),
-            className: "text-orange-600 dark:text-orange-500",
-          },
-          {
-            label: "O'chirish",
-            icon: Trash2,
-            onClick: () => handleDelete(actionPopup.student),
-            className: "text-red-600 dark:text-red-500",
-          },
-        ]}
+        actions={
+          actionPopup.student ? getStudentActions(actionPopup.student) : []
+        }
       />
 
       <AddStudentModal

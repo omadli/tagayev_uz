@@ -10,6 +10,7 @@ import DashboardPage from "./pages/DashboardPage";
 // --- THIS IS THE FIX: Import the new TeachersPage ---
 import TeachersPage from "./pages/TeachersPage";
 import StudentsPage from "./pages/StudentsPage";
+import MyStudentsPage from "./pages/MyStudentsPage";
 import StaffPage from "./pages/StaffPage"; // Assuming this page also exists as planned
 import GroupsPage from "./pages/GroupsPage";
 import MyGroupsPage from "./pages/MyGroupsPage";
@@ -49,8 +50,8 @@ function App() {
 
         {/* Route for Teachers */}
         <Route element={<RoleBasedRoute allowedRoles={["Teacher"]} />}>
-          <Route path="mygroups" element={<MyGroupsPage/>} />
-          <Route path="students" element={<StudentsPage />} />
+          <Route path="mygroups" element={<MyGroupsPage />} />
+          <Route path="my-students" element={<MyStudentsPage />} />
         </Route>
 
         {/* --- Admin & CEO Only Routes --- */}

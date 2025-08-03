@@ -30,7 +30,7 @@ import { SiSimplelogin } from "react-icons/si"; // Yuborilgan SMS lar
 export const navLinks = [
   { name: "Bosh sahifa", icon: Home, path: "/" }, // No roles = public for all logged-in users
   { name: "Guruhlarim", icon: Layers, path: "/mygroups", allowedRoles: ['Teacher',] },
-  { name: "O'quvchilarim", icon: FaUserGraduate, path: "/mystudents", allowedRoles: ['Teacher',] },
+  { name: "O'quvchilarim", icon: FaUserGraduate, path: "/my-students", allowedRoles: ['Teacher',] },
 
   { name: "Lidlar", icon: ClipboardList, path: "/leads", allowedRoles: ['Admin', 'CEO'] },
   { name: "O'qituvchilar", icon: FaChalkboardTeacher, path: "/teachers", allowedRoles: ['Admin', 'CEO'] },
