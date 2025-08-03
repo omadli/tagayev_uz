@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { navLinks } from "../../data/navigation";
+import { navLinks as allNavLinks } from "../../data/navigation";
+import { useAuth } from '../../context/AuthContext';
 import { FiChevronRight, FiChevronLeft } from "react-icons/fi";
 import clsx from "clsx";
 import { Tooltip } from "react-tooltip";
@@ -109,6 +110,44 @@ const NavItem = ({ item, isCollapsed, level = 0 }) => {
 
 // This is the main Sidebar component
 const DashboardSidebar = ({ isCollapsed, toggleCollapse }) => {
+  const { user } = useAuth(); 
+  const filterNavLinks = (links) => {
+    if (!user || !user.roles) return [];
+    
+    return links.reduce((filtered, link) => {
+        // If the link has no specific roles defined, everyone can see it.
+        if (!link.allowedRoles) {
+            // If it has children, filter them recursively
+            if (link.children) {
+                const filteredChildren = filterNavLinks(link.children);
+                // Only include the parent if it still has visible children
+                if (filteredChildren.length > 0) {
+                    filtered.push({ ...link, children: filteredChildren });
+                }
+            } else {
+                filtered.push(link);
+            }
+        } else {
+            // If the link has roles, check if the user has any of them
+            const isAuthorized = user.roles.some(role => link.allowedRoles.includes(role));
+            if (isAuthorized) {
+                // If it has children, they also need to be filtered
+                 if (link.children) {
+                    const filteredChildren = filterNavLinks(link.children);
+                    if (filteredChildren.length > 0) {
+                        filtered.push({ ...link, children: filteredChildren });
+                    }
+                } else {
+                    filtered.push(link);
+                }
+            }
+        }
+        return filtered;
+    }, []);
+};
+
+const visibleNavLinks = filterNavLinks(allNavLinks);
+
   return (
     <aside
       className={clsx(
@@ -145,7 +184,7 @@ const DashboardSidebar = ({ isCollapsed, toggleCollapse }) => {
 
       {/* The scrollable navigation area */}
       <nav className="flex-1 p-2 space-y-1.5 overflow-y-auto">
-        {navLinks.map((link) => (
+        {visibleNavLinks.map((link) => (
           <NavItem key={link.name} item={link} isCollapsed={isCollapsed} />
         ))}
       </nav>

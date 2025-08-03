@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
 import useWindowSize from "../hooks/useWindowSize";
 import clsx from "clsx";
 
@@ -20,7 +21,7 @@ const DashboardLayout = () => {
   // --- THIS IS THE FIX: Get state from the global context ---
   // The layout component no longer manages 'branches' or 'selectedBranchId' state.
   const { menuPosition, layoutWidth } = useSettings();
-
+  const { user } = useAuth();
   const { width } = useWindowSize();
   const isMobile = width < 1024;
 
@@ -47,6 +48,9 @@ const DashboardLayout = () => {
 
   // Determine if the vertical menu layout should be shown
   const showVerticalMenu = menuPosition === "vertical" || isMobile;
+
+  // Determine if the user has management-level roles
+  const isManager = user && (user.roles.includes('Admin') || user.roles.includes('CEO'));
 
   return (
     <div className="bg-gray-50 dark:bg-gray-900 flex min-h-screen">
@@ -110,7 +114,9 @@ const DashboardLayout = () => {
 
       {/* 2. Floating Action Buttons */}
       <ScrollToTopButton />
+      {isManager && (
       <DraggableAiButton onClick={() => setIsAiBotOpen(true)} />
+      )}
       <div className="fixed bottom-6 right-6 z-20">
         <button
           onClick={() => setIsSettingsOpen(true)}

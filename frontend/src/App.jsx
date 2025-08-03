@@ -2,7 +2,7 @@ import React from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { SettingsProvider } from "./context/SettingsContext";
-
+import RoleBasedRoute from "./components/auth/RoleBasedRoute";
 // Import Layout and Pages
 import LoginPage from "./pages/LoginPage";
 import DashboardLayout from "./layouts/DashboardLayout";
@@ -12,6 +12,7 @@ import TeachersPage from "./pages/TeachersPage";
 import StudentsPage from "./pages/StudentsPage";
 import StaffPage from "./pages/StaffPage"; // Assuming this page also exists as planned
 import GroupsPage from "./pages/GroupsPage";
+import MyGroupsPage from "./pages/MyGroupsPage";
 import RoomsPage from "./pages/RoomsPage";
 
 // This component protects all routes that require a logged-in user
@@ -44,19 +45,30 @@ function App() {
       {/* All dashboard routes are nested under the PrivateRoute. */}
       {/* This ensures that only authenticated users can access them. */}
       <Route path="/" element={<PrivateRoute />}>
-        {/* The 'index' route is the default page shown at the root path "/" */}
-        <Route index element={<DashboardPage />} />
+        {/* --- Public route within the app (all logged-in users can see) --- */}
 
-        {/* --- THIS IS THE FIX: Add the new route for the teachers page --- */}
-        <Route path="staff" element={<StaffPage />} />
-        <Route path="groups" element={<GroupsPage />} />
-        <Route path="teachers" element={<TeachersPage />} />
-        <Route path="students" element={<StudentsPage />} />
-        <Route path="settings/office/rooms" element={<RoomsPage />} />
-        {/* <Route path="leads" element={<LeadsPage />} /> */}
+        {/* Route for Teachers */}
+        <Route element={<RoleBasedRoute allowedRoles={["Teacher"]} />}>
+          <Route path="mygroups" element={<MyGroupsPage/>} />
+          <Route path="students" element={<StudentsPage />} />
+        </Route>
+
+        {/* --- Admin & CEO Only Routes --- */}
+        <Route element={<RoleBasedRoute allowedRoles={["Admin", "CEO"]} />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="students" element={<StudentsPage />} />
+          <Route path="groups" element={<GroupsPage />} />
+          <Route path="teachers" element={<TeachersPage />} />
+        </Route>
+
+        {/* --- CEO Only Routes --- */}
+        <Route element={<RoleBasedRoute allowedRoles={["CEO"]} />}>
+          <Route path="staff" element={<StaffPage />} />
+          <Route path="settings/office/rooms" element={<RoomsPage />} />
+          {/* Add other CEO-only settings pages here */}
+        </Route>
       </Route>
 
-      {/* A fallback route to catch any undefined paths and redirect to the appropriate starting page. */}
       <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
     </Routes>
   );

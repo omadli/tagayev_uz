@@ -28,15 +28,19 @@ import {
 import { SiSimplelogin } from "react-icons/si"; // Yuborilgan SMS lar
 
 export const navLinks = [
-  { name: "Bosh sahifa", icon: Home, path: "/" },
-  { name: "Lidlar", icon: ClipboardList, path: "/leads" },
-  { name: "O'qituvchilar", icon: FaChalkboardTeacher, path: "/teachers" },
-  { name: "Xodimlar", icon: Briefcase, path: "/staff" },
-  { name: "Guruhlar", icon: Layers, path: "/groups" },
-  { name: "O'quvchilar", icon: FaUserGraduate, path: "/students" },
+  { name: "Bosh sahifa", icon: Home, path: "/" }, // No roles = public for all logged-in users
+  { name: "Guruhlarim", icon: Layers, path: "/mygroups", allowedRoles: ['Teacher',] },
+  { name: "O'quvchilarim", icon: FaUserGraduate, path: "/mystudents", allowedRoles: ['Teacher',] },
+
+  { name: "Lidlar", icon: ClipboardList, path: "/leads", allowedRoles: ['Admin', 'CEO'] },
+  { name: "O'qituvchilar", icon: FaChalkboardTeacher, path: "/teachers", allowedRoles: ['Admin', 'CEO'] },
+  { name: "Xodimlar", icon: Briefcase, path: "/staff", allowedRoles: ['CEO']  },
+  { name: "Guruhlar", icon: Layers, path: "/groups", allowedRoles: ['Admin', 'CEO'] },
+  { name: "O'quvchilar", icon: FaUserGraduate, path: "/students", allowedRoles: ['Admin', 'CEO'] },
   {
     name: "Sozlamalar",
     icon: Settings,
+    allowedRoles: ['CEO'],
     children: [
       {
         name: "Asosiy sozlamalar",
@@ -81,9 +85,10 @@ export const navLinks = [
       },
     ],
   },
-  { name: "Moliya", icon: FaChartLine, path: "/finance" },
+  { name: "Moliya", icon: FaChartLine, path: "/finance" , allowedRoles: ['Admin', 'CEO'], },
   {
     name: "Hisobotlar",
+    allowedRoles: ['Admin', 'CEO'],
     icon: FileText,
     children: [
       { name: "Davomat", icon: UserCheck, path: "/reports/attendance" },
