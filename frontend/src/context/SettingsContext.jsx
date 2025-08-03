@@ -33,7 +33,7 @@ export const SettingsProvider = ({ children }) => {
     getInitialState("menuPosition", "vertical")
   );
   const [layoutWidth, setLayoutWidth] = useState(() =>
-    getInitialState("layoutWidth", "full")
+    getInitialState("layoutWidth", "contained")
   );
   const [branches, setBranches] = useState([]);
   const [selectedBranchId, setSelectedBranchId] = useState(() =>
