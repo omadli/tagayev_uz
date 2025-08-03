@@ -1,9 +1,10 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { useSettings } from "../../context/SettingsContext";
-import { navLinks } from "../../data/navigation";
+import { navLinks as allNavLinks } from "../../data/navigation";
 import { ChevronDown } from "lucide-react";
 import clsx from "clsx";
+import { useAuth } from "../../context/AuthContext";
 
 // This is the sub-component for each individual navigation item.
 const HorizontalNavItem = ({ item }) => {
@@ -63,6 +64,44 @@ const HorizontalNavItem = ({ item }) => {
 // This is the main component that renders the full navigation bar.
 const HorizontalNav = () => {
   const { layoutWidth } = useSettings();
+  const { user } = useAuth();
+  const filterNavLinks = (links) => {
+    if (!user || !user.roles) return [];
+    return links.reduce((filtered, link) => {
+      // If the link has no specific roles defined, everyone can see it.
+      if (!link.allowedRoles) {
+        // If it has children, filter them recursively
+        if (link.children) {
+          const filteredChildren = filterNavLinks(link.children);
+          // Only include the parent if it still has visible children
+          if (filteredChildren.length > 0) {
+            filtered.push({ ...link, children: filteredChildren });
+          }
+        } else {
+          filtered.push(link);
+        }
+      } else {
+        // If the link has roles, check if the user has any of them
+        const isAuthorized = user.roles.some((role) =>
+          link.allowedRoles.includes(role)
+        );
+        if (isAuthorized) {
+          // If it has children, they also need to be filtered
+          if (link.children) {
+            const filteredChildren = filterNavLinks(link.children);
+            if (filteredChildren.length > 0) {
+              filtered.push({ ...link, children: filteredChildren });
+            }
+          } else {
+            filtered.push(link);
+          }
+        }
+      }
+      return filtered;
+    }, []);
+  };
+
+  const visibleNavLinks = filterNavLinks(allNavLinks);
 
   return (
     <div className="border-t border-gray-100 dark:border-gray-700">
@@ -79,7 +118,7 @@ const HorizontalNav = () => {
             "justify-start": layoutWidth === "full",
           })}
         >
-          {navLinks.map((link) => (
+          {visibleNavLinks.map((link) => (
             <HorizontalNavItem key={link.name} item={link} />
           ))}
         </nav>
