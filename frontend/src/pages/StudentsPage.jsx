@@ -27,6 +27,9 @@ import {
   ProgressComponent,
 } from "../data/dataTableStyles.jsx";
 
+import Avatar from '@mui/material/Avatar';
+import {stringAvatar} from "../components/ui/Avatar";
+
 // Import child components
 import ActionPopup from "../components/ui/ActionPopup";
 import AddStudentModal from "../components/students/AddStudentModal";
@@ -235,15 +238,9 @@ const StudentsPage = () => {
       center: true,
       cell: (row) =>
         row.profile_photo ? (
-          <img
-            src={row.profile_photo}
-            alt={row.full_name}
-            className="w-9 h-9 rounded-full object-cover"
-          />
+          <Avatar alt={row.full_name} src={row.profile_photo} />
         ) : (
-          <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <User size={18} className="text-gray-400" />
-          </div>
+          <Avatar {...stringAvatar(row.full_name)} />
         ),
       width: "80px",
     },

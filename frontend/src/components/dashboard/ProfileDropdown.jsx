@@ -4,6 +4,8 @@ import { useAuth } from "../../context/AuthContext";
 import { FiLogOut, FiSettings, FiVideo, FiUser } from "react-icons/fi";
 import { QrCodeIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import { StyledBadge, stringAvatar } from "../ui/Avatar";
+import { Avatar } from "@mui/material";
 
 const ProfileDropdown = ({ onSettingsClick }) => {
   // ... (keep the existing state and useEffect hooks)
@@ -28,23 +30,34 @@ const ProfileDropdown = ({ onSettingsClick }) => {
         onClick={() => setIsOpen(!isOpen)}
         className="relative flex items-center"
       >
-        <img
-          src={user.profile_photo || `/logo.jpg`}
-          alt="User"
-          className="w-10 h-10 rounded-full border-2 border-transparent object-cover hover:border-blue-500"
-        />
-        <div className="absolute w-3 h-3 bg-green-500 rounded-full right-0 bottom-0 border-2 border-white"></div>
+        {user.profile_photo ? (
+          <StyledBadge
+            overlap="circular"
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            variant="dot"
+          >
+            <Avatar alt={user.full_name} src={user.profile_photo} />
+          </StyledBadge>
+        ) : (
+          <StyledBadge
+            overlap="circular"
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            variant="dot"
+          >
+            <Avatar {...stringAvatar(user.full_name)} />
+          </StyledBadge>
+        )}
       </button>
 
       {isOpen && (
         <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-lg shadow-xl z-20 animate-fade-in-down border dark:border-gray-700">
           <div className="p-4 border-b dark:border-gray-700 flex items-start justify-between">
             <div className="flex items-start space-x-3">
-              <img
-                src={user.profile_photo || `/logo.jpg`}
-                className="w-12 h-12 rounded-full object-cover"
-                alt=""
-              />
+              {user.profile_photo ? (
+                <Avatar alt={user.full_name} src={user.profile_photo} sx={{ width: 56, height: 56 }} />
+              ) : (
+                <Avatar {...stringAvatar(user.full_name)} sx={{ width: 56, height: 56 }} />
+              )}
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">
                   {user.full_name}
@@ -71,12 +84,6 @@ const ProfileDropdown = ({ onSettingsClick }) => {
             >
               <FiSettings className="mr-3" /> Profile Sozlamalari
             </button>
-            <Link
-              to="/video-guides"
-              className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
-            >
-              <FiVideo className="mr-3" /> Video Qo'llanmalar
-            </Link>
             <button
               onClick={logoutUser}
               className="w-full text-left flex items-center px-3 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 rounded-md"

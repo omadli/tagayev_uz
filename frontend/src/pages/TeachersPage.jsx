@@ -26,6 +26,8 @@ import {
   paginationComponentOptions,
   ProgressComponent,
 } from "../data/dataTableStyles.jsx";
+import {stringAvatar} from "../components/ui/Avatar";
+import Avatar from '@mui/material/Avatar';
 
 const TeachersPage = () => {
   // State management for data, UI controls, and the modal
@@ -144,15 +146,17 @@ const TeachersPage = () => {
       name: "Rasm",
       cell: (row) =>
         row.profile_photo ? (
-          <img
-            src={row.profile_photo}
-            alt={row.full_name}
-            className="w-9 h-9 rounded-full object-cover"
-          />
+          <Avatar alt={row.full_name} src={row.profile_photo} />
+          // <img
+          //   src={row.profile_photo}
+          //   alt={row.full_name}
+          //   className="w-9 h-9 rounded-full object-cover"
+          // />
         ) : (
-          <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-            <User size={18} className="text-gray-400" />
-          </div>
+          <Avatar {...stringAvatar(row.full_name)} />
+          // <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
+          //   <User size={18} className="text-gray-400" />
+          // </div>
         ),
       width: "80px",
     },
