@@ -10,6 +10,8 @@ import { Link } from "react-router-dom";
 // Import our beautiful, reusable input components
 import Input from "../components/ui/Input";
 import PhoneNumberInput from "../components/ui/PhoneNumberInput";
+import InputAdornment from '@mui/material/InputAdornment';
+import { IconButton } from "@mui/material";
 
 // Form validation schema
 const schema = yup.object().shape({
@@ -28,6 +30,7 @@ const LoginPage = () => {
   // React Hook Form initialization
   const {
     control,
+    register,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -83,22 +86,22 @@ const LoginPage = () => {
             error={errors.phone_number}
           />
 
-          <div className="relative">
             <Input
-              id="password"
+              name="password"
               label="Parol"
               type={showPassword ? "text" : "password"}
-              {...control.register("password")}
+              {...register("password")}
               error={errors.password}
+              InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                                    {showPassword ? <EyeOff /> : <Eye />}
+                                </IconButton>
+                            </InputAdornment>
+                        )
+                    }}
             />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:bg-gray-700"
-            >
-              {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
-          </div>
 
           <div className="text-right">
             <Link

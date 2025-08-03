@@ -1,55 +1,73 @@
-import React from "react";
-import { Controller } from "react-hook-form";
-import { PatternFormat } from "react-number-format";
-import clsx from "clsx";
+import React from 'react';
+import { Controller } from 'react-hook-form';
+import { PatternFormat } from 'react-number-format';
+import { useSettings } from '../../context/SettingsContext';
+import { ThemeProvider } from '@mui/material/styles';
+import { getMuiTheme } from '../../theme/muiTheme';
+import TextField from '@mui/material/TextField';
+import InputAdornment from '@mui/material/InputAdornment';
+
+// --- A custom component that bridges react-number-format with MUI's input ---
+const NumberFormatCustom = React.forwardRef((props, ref) => {
+    const { onChange, ...other } = props;
+
+    return (
+        <PatternFormat
+            {...other}
+            getInputRef={ref}
+            onValueChange={(values) => {
+                // We call the onChange from react-hook-form's Controller,
+                // passing up the unformatted numeric string (e.g., "901234567").
+                onChange({
+                    target: {
+                        name: props.name,
+                        value: values.value,
+                    },
+                });
+            }}
+            // Formatting options for the Uzbek phone number
+            format="(##) ###-##-##"
+            mask="_"
+            allowEmptyFormatting
+        />
+    );
+});
+
 
 const PhoneNumberInput = ({ control, name, label, error }) => {
-  return (
-    <div className="relative h-[50px]">
-      <Controller
-        name={name}
-        control={control}
-        render={({ field }) => (
-          <div className="relative flex items-center">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-900 dark:text-white pb-2.5 pt-4">
-              +998
-            </span>
-            <PatternFormat
-              {...field}
-              id={name}
-              format="(##) ###-##-##"
-              mask="_"
-              allowEmptyFormatting
-              className={clsx(
-                // --- STYLING ---
-                "pl-14 block px-3 pb-2.5 pt-4 w-full text-sm text-gray-900 bg-transparent rounded-lg border appearance-none dark:text-white focus:outline-none focus:ring-0 peer",
-                error
-                  ? "border-red-600 dark:border-red-500 focus:border-red-600"
-                  : "border-gray-300 dark:border-gray-600 focus:border-blue-600"
-              )}
-              placeholder=" " // Crucial for floating label
+    // Get the current theme to create the correct MUI theme
+    const { theme } = useSettings();
+    const muiTheme = getMuiTheme(theme);
+
+    return (
+        // Wrap the component in the ThemeProvider to apply our custom dark/light styles
+        <ThemeProvider theme={muiTheme}>
+            <Controller
+                name={name}
+                control={control}
+                render={({ field }) => (
+                    <TextField
+                        {...field}
+                        label={label}
+                        variant="outlined"
+                        fullWidth
+                        error={!!error}
+                        helperText={error?.message}
+                        // This is the key to making it a formatted phone input
+                        InputProps={{
+                            inputComponent: NumberFormatCustom,
+                            // --- THIS IS THE FIX for the "+998" prefix ---
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    +998
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                )}
             />
-            <label
-              htmlFor={name}
-              className={clsx(
-                "absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white dark:bg-gray-800 px-2 peer-focus:px-2 peer-placeholder-shown:scale-100 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:top-1/2 peer-focus:top-2 peer-focus:scale-75 peer-focus:-translate-y-4 start-1",
-                error
-                  ? "text-red-600 dark:text-red-500"
-                  : "text-gray-500 dark:text-gray-400 peer-focus:text-blue-600"
-              )}
-            >
-              {label}
-            </label>
-          </div>
-        )}
-      />
-      {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-500">
-          {error.message}
-        </p>
-      )}
-    </div>
-  );
+        </ThemeProvider>
+    );
 };
 
 export default PhoneNumberInput;
