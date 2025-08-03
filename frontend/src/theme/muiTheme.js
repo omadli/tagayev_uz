@@ -1,13 +1,13 @@
 import { createTheme } from "@mui/material/styles";
 
-// This function creates the appropriate MUI theme based on the mode ('light' or 'dark')
-export const getMuiTheme = (mode) =>
-  createTheme({
+export const getMuiTheme = (appTheme) => {
+  const mode = appTheme === "dark" ? "dark" : "light";
+
+  return createTheme({
     palette: {
       mode,
       ...(mode === "dark"
         ? {
-            // --- DARK MODE PALETTE ---
             background: {
               default: "#1A2238", // dark-primary
               paper: "#222E4E", // dark-secondary
@@ -22,7 +22,6 @@ export const getMuiTheme = (mode) =>
             divider: "#2F3B60",
           }
         : {
-            // --- LIGHT MODE PALETTE ---
             background: {
               default: "#F9FAFB",
               paper: "#FFFFFF",
@@ -42,3 +41,4 @@ export const getMuiTheme = (mode) =>
       // ... add other component overrides as needed
     },
   });
+};

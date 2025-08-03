@@ -1,95 +1,50 @@
-import React, { useState, forwardRef } from "react";
-import { Controller } from "react-hook-form";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { Calendar } from "lucide-react";
-import clsx from "clsx";
-
-// A custom input component specifically for the DatePicker
-// We use forwardRef to pass the ref from DatePicker down to our button
-const CustomDateInput = forwardRef(({ value, onClick, error, label }, ref) => (
-  <button
-    type="button"
-    onClick={onClick}
-    ref={ref}
-    className="relative w-full text-left"
-  >
-    {/* --- THIS IS THE HEIGHT FIX --- */}
-    {/* We add h-[50px] to match the height of our standard Input component */}
-    <div
-      className={clsx(
-        "h-[50px] flex items-center px-3 pt-2 w-full text-sm text-gray-900 bg-transparent rounded-lg border appearance-none dark:text-white focus:outline-none focus:ring-0",
-        error
-          ? "border-red-600 dark:border-red-500"
-          : "border-gray-300 dark:border-gray-600"
-      )}
-    >
-      {/* The value is now inside a span for better control */}
-      <span>{value || ""}</span>
-    </div>
-
-    {/* The floating label logic needs a slight adjustment for the new structure */}
-    <label
-      className={clsx(
-        "absolute text-sm duration-300 transform -translate-y-4 scale-75 top-2 z-10 origin-[0] bg-white dark:bg-gray-800 px-2 start-1",
-        error
-          ? "text-red-600 dark:text-red-500"
-          : "text-gray-500 dark:text-gray-400",
-        // If there's a value, always float the label up
-        value
-          ? "scale-75 -translate-y-4 top-2"
-          : "scale-100 -translate-y-1/2 top-1/2"
-      )}
-    >
-      {label}
-    </label>
-    <Calendar
-      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-      size={20}
-    />
-  </button>
-));
+import React from 'react';
+import { Controller } from 'react-hook-form';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { ThemeProvider } from '@mui/material/styles';
+import { getMuiTheme } from '../../theme/muiTheme'; // Import our shared MUI theme
+import { useSettings } from '../../context/SettingsContext';
+import dayjs from 'dayjs';
 
 const DateInput = ({ control, name, label, error }) => {
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    // Get the current theme to create the correct MUI theme
+    const { theme } = useSettings();
+    const muiTheme = getMuiTheme(theme);
 
-  return (
-    // The z-index logic for the popup remains the same
-    <div className={clsx("relative w-full", isCalendarOpen ? "z-20" : "z-0")}>
-      <Controller
-        name={name}
-        control={control}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <DatePicker
-            selected={value}
-            onChange={onChange}
-            onBlur={onBlur}
-            dateFormat="dd/MM/yyyy"
-            locale="uz"
-            onCalendarOpen={() => setIsCalendarOpen(true)}
-            onCalendarClose={() => setIsCalendarOpen(false)}
-            showYearDropdown
-            scrollableYearDropdown
-            yearDropdownItemNumber={15}
-            wrapperClassName="w-full"
-            // Pass the formatted date value to our custom input
-            customInput={
-              <CustomDateInput
-                value={value ? value.toLocaleDateString("en-GB") : ""}
-                error={error}
-                label={label}
-              />
-            }
-          />
-        )}
-      />
-      {error && (
-        <p className="mt-2 text-xs text-red-600 dark:text-red-500">
-          {error.message}
-        </p>
-      )}
-    </div>
-  );
+    return (
+        // Wrap the component in the ThemeProvider to apply our custom dark/light styles
+        <ThemeProvider theme={muiTheme}>
+            <Controller
+                name={name}
+                control={control}
+                render={({ field }) => (
+                    <DatePicker
+                        {...field}
+                        label={label}
+                        // The value must be a dayjs object or null for MUI
+                        value={field.value ? dayjs(field.value) : null}
+                        // When the value changes, we pass the standard Date object back to react-hook-form
+                        onChange={(date) => field.onChange(date ? date.toDate() : null)}
+                        // Use our globally configured Uzbek locale and format
+                        format="DD/MM/YYYY"
+                        // Style the input field using MUI's slotProps
+                        slotProps={{
+                            textField: {
+                                variant: 'outlined',
+                                fullWidth: true,
+                                error: !!error,
+                                helperText: error?.message,
+                            },
+                            // Add props to the calendar icon if needed
+                            openPickerButton: {
+                                "aria-label": "open date picker",
+                            },
+                        }}
+                    />
+                )}
+            />
+        </ThemeProvider>
+    );
 };
 
 export default DateInput;
