@@ -60,7 +60,7 @@ const LoginPage = () => {
       ></div>
 
       {/* Login Form Card */}
-      <div className="relative z-10 w-full max-w-sm p-8 space-y-8 bg-white rounded-2xl shadow-lg hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700">
+      <div className="relative z-10 w-full max-w-sm p-8 space-y-8 bg-white rounded-2xl shadow-lg dark:bg-gray-800 dark:border-gray-700">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-300 ">
             Tagayev.uz ga Xush kelibsiz 👋
