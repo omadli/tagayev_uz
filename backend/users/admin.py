@@ -3,8 +3,8 @@ from django import forms
 from django.utils.html import format_html
 from django.contrib.auth.models import Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-
 from import_export.admin import ImportExportModelAdmin
+from django.contrib.auth.forms import AdminPasswordChangeForm, UserChangeForm, ReadOnlyPasswordHashField
 
 from .models import User, LoginLog
 
@@ -53,6 +53,13 @@ class UserCreationForm(forms.ModelForm):
 
 
 class UserChangeForm(forms.ModelForm):
+    password = ReadOnlyPasswordHashField(
+        label=("Password"),
+        help_text=(
+            "Raw passwords are not stored, so there is no way to see "
+            "the user’s password."
+        ),
+    )
     class Meta:
         model = User
         fields = (
@@ -65,7 +72,8 @@ class UserChangeForm(forms.ModelForm):
 
 
 @admin.register(User)
-class UserAdmin(ImportExportModelAdmin):
+class UserAdmin(ImportExportModelAdmin, BaseUserAdmin):
+    change_password_form = AdminPasswordChangeForm
     form = UserChangeForm
     add_form = UserCreationForm
     inlines = [LoginLogInline]
@@ -86,7 +94,7 @@ class UserAdmin(ImportExportModelAdmin):
     readonly_fields = ("photo_tag",)
 
     fieldsets = (
-        (None, {"fields": ("full_name", "phone_number", "profile_photo", "photo_tag")}),
+        (None, {"fields": ("full_name", "phone_number", "profile_photo", "photo_tag", "password")}),
         ("System Roles", {"fields": ("is_active", "is_ceo", "is_teacher", "is_admin")}),
         ("Staff info", {"fields": ("enrollment_date", "salary", "percentage")}),
         ("Permissions", {"fields": ("is_superuser", "user_permissions")}),
