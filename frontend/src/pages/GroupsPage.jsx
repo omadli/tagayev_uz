@@ -8,7 +8,7 @@ import React, {
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { BiArchiveIn, BiArchiveOut } from "react-icons/bi";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext";
 import clsx from "clsx";
 import Select from "react-select";
 import { Link } from "react-router-dom";
@@ -62,8 +63,9 @@ const formatWeekdays = (weekdays) => {
     .join("/");
 };
 
-const GroupsPage = () => {
+const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
   const { theme, selectedBranchId } = useSettings();
+  const { user: currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   // --- STATE MANAGEMENT ---
   const [groups, setGroups] = useState([]);
@@ -72,8 +74,10 @@ const GroupsPage = () => {
     search: "",
     is_archived: false,
     branch: selectedBranchId || null, // This should come from a context or global state
-    teacher: searchParams.get('teacher') || null,
-    room: searchParams.get('room') || null,
+    teacher: isTeacherMyGroupsPage
+      ? currentUser.user_id
+      : searchParams.get("teacher") || null,
+    room: searchParams.get("room") || null,
     weekdays: null,
   });
   // State for filter dropdowns
@@ -232,84 +236,97 @@ const GroupsPage = () => {
     }
   };
 
-  const selectedRoomOption = useMemo(() => 
-        rooms.find(option => option.value == filters.room) || null, 
-        [filters.room, rooms]
-    );
-    const selectedTeacherOption = useMemo(() => 
-        teachers.find(option => option.value == filters.teacher) || null, 
-        [filters.teacher, teachers]
-    );
+  const selectedRoomOption = useMemo(
+    () => rooms.find((option) => option.value == filters.room) || null,
+    [filters.room, rooms]
+  );
+  const selectedTeacherOption = useMemo(
+    () => teachers.find((option) => option.value == filters.teacher) || null,
+    [filters.teacher, teachers]
+  );
 
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-GB");
+
   // --- DATA TABLE COLUMNS ---
-  const columns = [
-    { name: "№", selector: (row, i) => i + 1, width: "60px" },
-    {
-      name: "Guruh nomi",
-      selector: (row) => row.name,
+  const columns = useMemo(() => {
+    const baseColumns = [
+      { name: "№", selector: (row, i) => i + 1, width: "60px" },
+      {
+        name: "Guruh nomi",
+        selector: (row) => row.name,
+        sortable: true,
+        cell: (row) => (
+          <div className="flex items-center space-x-3 py-2">
+            <span
+              style={{ backgroundColor: row.color }}
+              className="w-4 h-4 rounded-full flex-shrink-0 border border-gray-300 dark:border-gray-600"
+            ></span>
+            <span
+              style={{ color: theme === "dark" ? row.text_color : "inherit" }}
+              className="font-semibold"
+            >
+              {row.name}
+            </span>
+          </div>
+        ),
+      },
+    ];
+
+    const teacherColumn = {
+      name: "O'qituvchi",
+      selector: (row) => row.teacher_name,
       sortable: true,
-      cell: (row) => (
-        <div className="flex items-center space-x-3 py-2">
-          <span
-            style={{ backgroundColor: row.color }}
-            className="w-4 h-4 rounded-full flex-shrink-0 border border-gray-300 dark:border-gray-600"
-          ></span>
-          <span
-            style={{ color: theme === "dark" ? row.text_color : "inherit" }}
-            className="font-semibold"
-          >
-            {row.name}
-          </span>
-        </div>
-      ),
-    },
-    { name: "O'qituvchi", selector: (row) => row.teacher_name, sortable: true },
-    {
-      name: "Hafta kunlari",
-      selector: (row) => row.weekdays,
-      cell: (row) => formatWeekdays(row.weekdays),
-      sortable: true,
-    },
-    {
-      name: "Vaqti",
-      selector: (row) => row.course_start_time,
-      cell: (row) =>
-        `${row.course_start_time.slice(0, 5)} - ${row.course_end_time.slice(
-          0,
-          5
-        )}`,
-      sortable: true,
-    },
-    { name: "Xona", selector: (row) => row.room_name, sortable: true },
-    {
-      name: "Narxi",
-      selector: (row) => row.current_price,
-      format: (row) =>
-        `${new Intl.NumberFormat("fr-FR").format(row.current_price || 0)} so'm`,
-      sortable: true,
-    },
-    {
-      name: "O'quvchilar soni",
-      selector: (row) => row.students_count,
-      center: true,
-      sortable: true,
-    },
-    {
-      name: "Ochilgan",
-      selector: (row) => row.start_date,
-      center: true,
-      sortable: true,
-      format: (row) => formatDate(row.start_date),
-    },
-    {
-      name: "Yakunlanadi",
-      selector: (row) => row.end_date,
-      center: true,
-      sortable: true,
-      format: (row) => formatDate(row.end_date),
-    },
-    {
+    };
+    const remainingColumns = [
+      {
+        name: "Hafta kunlari",
+        selector: (row) => row.weekdays,
+        cell: (row) => formatWeekdays(row.weekdays),
+        sortable: true,
+      },
+      {
+        name: "Vaqti",
+        selector: (row) => row.course_start_time,
+        cell: (row) =>
+          `${row.course_start_time.slice(0, 5)} - ${row.course_end_time.slice(
+            0,
+            5
+          )}`,
+        sortable: true,
+      },
+      { name: "Xona", selector: (row) => row.room_name, sortable: true },
+      {
+        name: "Narxi",
+        selector: (row) => row.current_price,
+        format: (row) =>
+          `${new Intl.NumberFormat("fr-FR").format(
+            row.current_price || 0
+          )} so'm`,
+        sortable: true,
+      },
+      {
+        name: "O'quvchilar soni",
+        selector: (row) => row.students_count,
+        center: true,
+        sortable: true,
+      },
+      {
+        name: "Ochilgan",
+        selector: (row) => row.start_date,
+        center: true,
+        sortable: true,
+        format: (row) => formatDate(row.start_date),
+      },
+      {
+        name: "Yakunlanadi",
+        selector: (row) => row.end_date,
+        center: true,
+        sortable: true,
+        format: (row) => formatDate(row.end_date),
+      },
+    ];
+
+    const actionsColumn = {
       name: "Harakatlar",
       cell: (row) => (
         <button onClick={(e) => openActionPopup(e, row)}>
@@ -319,8 +336,22 @@ const GroupsPage = () => {
       ignoreRowClick: true,
       center: true,
       style: { overflow: "visible" },
-    },
-  ];
+    };
+
+    let finalColumns = [...baseColumns];
+
+    if (!isTeacherMyGroupsPage) {
+      finalColumns.push(teacherColumn);
+    }
+
+    finalColumns = [...finalColumns, ...remainingColumns];
+
+    if (!isTeacherMyGroupsPage) {
+      finalColumns.push(actionsColumn);
+    }
+
+    return finalColumns;
+  }, [isTeacherMyGroupsPage, theme]);
 
   const weekdayFilterOptions = [
     { value: "135", label: "Toq kunlar" },
@@ -334,21 +365,23 @@ const GroupsPage = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-4">
           <h1 className="text-2xl font-bold text-gray-800 dark:text-text-light-primary">
-            Guruhlar
+            {isTeacherMyGroupsPage ? "Mening Guruhlarim" : "Guruhlar"}
           </h1>
           <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-300 px-3 py-1 rounded-full text-sm font-medium">
             Guruhlar soni: {groups.length} ta
           </span>
         </div>
-        <div className="flex items-center flex-wrap justify-end gap-3">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus size={16} />
-            <span>Yangi Qo'shish</span>
-          </button>
-        </div>
+        {!isTeacherMyGroupsPage && (
+          <div className="flex items-center flex-wrap justify-end gap-3">
+            <button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 flex items-center space-x-2"
+            >
+              <Plus size={16} />
+              <span>Yangi Qo'shish</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="bg-white dark:bg-dark-secondary p-4 rounded-lg shadow-sm border dark:border-dark-tertiary">
@@ -377,13 +410,15 @@ const GroupsPage = () => {
             isClearable
             onChange={(opt) => handleFilterChange("room", opt)}
           />
-          <Select
-            placeholder="O'qituvchi"
-            options={teachers}
-            value={selectedTeacherOption}
-            isClearable
-            onChange={(opt) => handleFilterChange("teacher", opt)}
-          />
+          {!isTeacherMyGroupsPage && (
+            <Select
+              placeholder="O'qituvchi"
+              options={teachers}
+              value={selectedTeacherOption}
+              isClearable
+              onChange={(opt) => handleFilterChange("teacher", opt)}
+            />
+          )}
           <div className="flex items-center space-x-2 justify-end">
             <label className="text-sm font-medium">Arxiv</label>
             <button
@@ -427,67 +462,71 @@ const GroupsPage = () => {
         />
       </div>
 
-      <ActionPopup
-        isOpen={actionPopup.isOpen}
-        onClose={closeActionPopup}
-        referenceElement={actionPopup.referenceElement}
-        title={
-          actionPopup.data
-            ? `${actionPopup.data.name} - ${actionPopup.data.teacher_name}`
-            : "Guruh"
-        }
-        actions={[
-          {
-            label: "Ko'rish",
-            icon: Eye,
-            onClick: () => handleView(actionPopup.data),
-          },
-          {
-            label: "Tahrirlash",
-            icon: Edit,
-            onClick: () => handleEdit(actionPopup.data),
-          },
-          {
-            label: "Narx o'zgartirish",
-            icon: Receipt,
-            onClick: () => handlePriceChange(actionPopup.data),
-          },
-          {
-            label: "Dars kuni/vaqtini o'zgartirish",
-            icon: CalendarCog,
-            onClick: () => {},
-          },
-          {
-            label: "O'quvchi kiritish",
-            icon: UserPlus,
-            onClick: () => handleAddStudent(actionPopup.data),
-          },
-          { isSeparator: true },
-          {
-            label: !actionPopup.data?.is_archived
-              ? "Arxivlash"
-              : "Arxivdan chiqarish",
-            icon: !actionPopup.data?.is_archived ? BiArchiveIn : BiArchiveOut,
-            onClick: () => handleArchive(actionPopup.data),
-            className: "text-orange-600 dark:text-orange-500",
-          },
-          {
-            label: "O'chirish",
-            icon: Trash2,
-            className: "text-red-600",
-            onClick: () => handleDelete(actionPopup.data),
-          },
-        ]}
-      />
+      {!isTeacherMyGroupsPage && (
+        <ActionPopup
+          isOpen={actionPopup.isOpen}
+          onClose={closeActionPopup}
+          referenceElement={actionPopup.referenceElement}
+          title={
+            actionPopup.data
+              ? `${actionPopup.data.name} - ${actionPopup.data.teacher_name}`
+              : "Guruh"
+          }
+          actions={[
+            {
+              label: "Ko'rish",
+              icon: Eye,
+              onClick: () => handleView(actionPopup.data),
+            },
+            {
+              label: "Tahrirlash",
+              icon: Edit,
+              onClick: () => handleEdit(actionPopup.data),
+            },
+            {
+              label: "Narx o'zgartirish",
+              icon: Receipt,
+              onClick: () => handlePriceChange(actionPopup.data),
+            },
+            {
+              label: "Dars kuni/vaqtini o'zgartirish",
+              icon: CalendarCog,
+              onClick: () => {},
+            },
+            {
+              label: "O'quvchi kiritish",
+              icon: UserPlus,
+              onClick: () => handleAddStudent(actionPopup.data),
+            },
+            { isSeparator: true },
+            {
+              label: !actionPopup.data?.is_archived
+                ? "Arxivlash"
+                : "Arxivdan chiqarish",
+              icon: !actionPopup.data?.is_archived ? BiArchiveIn : BiArchiveOut,
+              onClick: () => handleArchive(actionPopup.data),
+              className: "text-orange-600 dark:text-orange-500",
+            },
+            {
+              label: "O'chirish",
+              icon: Trash2,
+              className: "text-red-600",
+              onClick: () => handleDelete(actionPopup.data),
+            },
+          ]}
+        />
+      )}
 
-      <AddGroupModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        refreshGroups={fetchGroups}
-        selectedBranchId={filters.branch}
-      />
+      {!isTeacherMyGroupsPage && (
+        <AddGroupModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          refreshGroups={fetchGroups}
+          selectedBranchId={filters.branch}
+        />
+      )}
 
-      {selectedGroup && (
+      {!isTeacherMyGroupsPage && selectedGroup && (
         <EditGroupModal
           isOpen={isEditModalOpen}
           onClose={() => {
@@ -500,7 +539,7 @@ const GroupsPage = () => {
         />
       )}
 
-      {selectedGroup && (
+      {!isTeacherMyGroupsPage && selectedGroup && (
         <PriceChangeModal
           isOpen={isPriceModalOpen}
           onClose={() => {
