@@ -500,6 +500,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
           progressPending={isLoading}
           responsive
           selectableRows
+          selectableRowsHighlight
           highlightOnHover
           onSelectedRowsChange={handleRowSelected}
           // pagination

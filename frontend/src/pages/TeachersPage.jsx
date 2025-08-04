@@ -312,6 +312,7 @@ const TeachersPage = () => {
           paginationRowsPerPageOptions={[10, 30, 50, 100]}
           paginationComponentOptions={paginationComponentOptions}
           selectableRows
+          selectableRowsHighlight
           highlightOnHover
           onSelectedRowsChange={handleRowSelected}
           customStyles={theme === "dark" ? darkThemeStyles : customStyles}

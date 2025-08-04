@@ -11,6 +11,8 @@ import {
   customStyles,
   darkThemeStyles,
   NoDataComponent,
+  ProgressComponent,
+  paginationComponentOptions,
 } from "../data/dataTableStyles.jsx";
 import ActionPopup from "../components/ui/ActionPopup";
 import RoomModal from "../components/rooms/RoomModal"; // Import the new modal
@@ -200,8 +202,14 @@ const RoomsPage = () => {
           data={rooms}
           progressPending={isLoading}
           pagination
+          paginationRowsPerPageOptions={[10, 30, 50, 100]}
+          paginationComponentOptions={paginationComponentOptions}
+          highlightOnHover
+          selectableRows
+          selectableRowsHighlight
           customStyles={theme === "dark" ? darkThemeStyles : customStyles}
           noDataComponent={<NoDataComponent />}
+          progressComponent={<ProgressComponent />}
         />
       </div>
 

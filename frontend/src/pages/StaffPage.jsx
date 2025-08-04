@@ -107,7 +107,6 @@ const StaffPage = () => {
 
   const openActionPopup = (e, user) => {
     e.stopPropagation();
-    const rect = e.currentTarget.getBoundingClientRect();
     setActionPopup({
       isOpen: true,
       user: user,
@@ -357,6 +356,7 @@ const StaffPage = () => {
           paginationComponentOptions={paginationComponentOptions}
           highlightOnHover
           selectableRows
+          selectableRowsHighlight
           onSelectedRowsChange={handleRowSelected}
           customStyles={theme === "dark" ? darkThemeStyles : customStyles}
           progressComponent={<ProgressComponent />}

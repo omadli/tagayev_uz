@@ -454,6 +454,10 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
           responsive
           pagination
           highlightOnHover
+          selectableRows
+          selectableRowsHighlight
+          pointerOnHover
+          onRowClicked={(row) => handleView(row)}
           customStyles={theme === "dark" ? darkThemeStyles : customStyles}
           progressComponent={<ProgressComponent />}
           noDataComponent={<NoDataComponent />}
