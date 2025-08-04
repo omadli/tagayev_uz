@@ -297,6 +297,14 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
   };
 
   // --- FORMATTING & TABLE DEFINITION ---
+  const formatPhoneNumber = (n) => {
+    const p = n.toString();
+    return `+${p.slice(0, 3)} (${p.slice(3, 5)}) ${p.slice(5, 8)}-${p.slice(
+      8,
+      10
+    )}-${p.slice(10, 12)}`;
+  };
+  
   const formatCurrency = (num) =>
     new Intl.NumberFormat("fr-FR").format(num) + " so'm";
 
@@ -326,11 +334,12 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     {
       name: "Telefon raqami",
       center: true,
-      selector: (row) => `+${row.phone_number}`,
+      selector: (row) => formatPhoneNumber(row.phone_number),
       sortable: true,
     },
     {
       name: "Balans",
+      width: "130px",
       selector: (row) => row.balance,
       sortable: true,
       cell: (row) => (
@@ -348,10 +357,11 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     },
     {
       name: "Guruhlari",
+      width: "300px",
       // --- FIX for 'grow' prop ---
       // We control the width and content in the cell renderer.
       cell: (row) => (
-        <div style={{ minWidth: "400px" }} className="w-full text-left">
+        <div style={{ minWidth: "300px" }} className="w-full text-left">
           {row.groups.length > 0 ? (
             <div className="text-xs space-y-1">
               {row.groups.map((g) => (
@@ -375,7 +385,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       // --- FIX for 'grow' prop ---
       // We control the width directly with inline styles on the cell's content.
       cell: (row) => (
-        <div className="truncate" style={{ minWidth: "150px" }}>
+        <div className="truncate" style={{ minWidth: "100px" }}>
           {row.comment || "Izoh yo'q"}
         </div>
       ),
@@ -499,6 +509,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
           data={students}
           progressPending={isLoading}
           responsive
+          expandableIcon
           selectableRows
           selectableRowsHighlight
           highlightOnHover

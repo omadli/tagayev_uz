@@ -153,7 +153,10 @@ const StaffPage = () => {
     if (num === null || num === undefined) return "-";
     return new Intl.NumberFormat("fr-FR").format(num) + " so'm";
   };
-
+  const formatPhoneNumber = n => {
+  const p = n.toString();
+  return `+${p.slice(0,3)} (${p.slice(3,5)}) ${p.slice(5,8)}-${p.slice(8,10)}-${p.slice(10,12)}`;
+};
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
     return new Date(dateStr).toLocaleDateString("en-GB");
@@ -194,7 +197,7 @@ const StaffPage = () => {
     },
     {
       name: "Telefon raqam",
-      selector: (row) => `+${row.phone_number}`,
+      selector: (row) => formatPhoneNumber(row.phone_number),
       sortable: true,
     },
     {

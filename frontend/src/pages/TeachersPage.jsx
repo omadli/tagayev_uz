@@ -26,8 +26,8 @@ import {
   paginationComponentOptions,
   ProgressComponent,
 } from "../data/dataTableStyles.jsx";
-import {stringAvatar} from "../components/ui/Avatar";
-import Avatar from '@mui/material/Avatar';
+import { stringAvatar } from "../components/ui/Avatar";
+import Avatar from "@mui/material/Avatar";
 
 const TeachersPage = () => {
   // State management for data, UI controls, and the modal
@@ -139,6 +139,13 @@ const TeachersPage = () => {
     return new Intl.NumberFormat("fr-FR").format(num) + " so'm";
   };
   const formatDate = (dateStr) => new Date(dateStr).toLocaleDateString("en-GB");
+  const formatPhoneNumber = (n) => {
+    const p = n.toString();
+    return `+${p.slice(0, 3)} (${p.slice(3, 5)}) ${p.slice(5, 8)}-${p.slice(
+      8,
+      10
+    )}-${p.slice(10, 12)}`;
+  };
 
   const columns = [
     { name: "№", selector: (row, i) => i + 1, width: "60px" },
@@ -147,16 +154,8 @@ const TeachersPage = () => {
       cell: (row) =>
         row.profile_photo ? (
           <Avatar alt={row.full_name} src={row.profile_photo} />
-          // <img
-          //   src={row.profile_photo}
-          //   alt={row.full_name}
-          //   className="w-9 h-9 rounded-full object-cover"
-          // />
         ) : (
           <Avatar {...stringAvatar(row.full_name)} />
-          // <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-600 flex items-center justify-center flex-shrink-0">
-          //   <User size={18} className="text-gray-400" />
-          // </div>
         ),
       width: "80px",
     },
@@ -174,7 +173,7 @@ const TeachersPage = () => {
       name: "Telefon raqam",
       sortable: true,
       center: true,
-      selector: (row) => `+${row.phone_number}`,
+      selector: (row) => formatPhoneNumber(row.phone_number),
     },
     {
       name: "Doimiy oylik",
