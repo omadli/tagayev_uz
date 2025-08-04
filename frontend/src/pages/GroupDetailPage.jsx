@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import toast from "react-hot-toast";
-import { useAuth } from "../context/AuthContext";
 import { Tabs, Tab, Box, CircularProgress } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { getMuiTheme } from "../theme/muiTheme";
@@ -13,13 +12,12 @@ import GroupInfoPanel from "../components/groups/detail/GroupInfoPanel";
 import AttendanceTab from "../components/groups/detail/AttendanceTab";
 import StudentListTab from "../components/groups/detail/StudentListTab";
 import GroupCalendarTab from "../components/groups/detail/GroupCalendarTab";
-import PriceHistoryTab from "../components/groups/detail/PriceHistoryTab";
+import PriceHistoryTab from "../components/groups/detail/PriceHistoryTab.jsx";
 
 // Import all necessary modals
 import EditGroupModal from "../components/groups/EditGroupModal";
 import PriceChangeModal from "../components/groups/PriceChangeModal";
 import AddStudentToGroupModal from "../components/groups/AddStudentToGroupModal";
-import AddPaymentModal from "../components/finance/AddPaymentModal";
 
 const GroupDetailPage = () => {
   // --- STATE MANAGEMENT ---
@@ -149,7 +147,11 @@ const GroupDetailPage = () => {
             )}
             {activeTab === 2 && <GroupCalendarTab group={group} />}
             {activeTab === 3 && (
-              <PriceHistoryTab priceHistory={group.price_history || []} />
+              <PriceHistoryTab
+                priceHistory={group.price_history || []}
+                groupId={groupId}
+                refreshGroupDetails={fetchGroupDetails}
+              />
             )}
           </div>
         </div>
