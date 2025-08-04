@@ -65,8 +65,8 @@ class UserSerializer(serializers.ModelSerializer):
         Handles creation of any type of user.
         The user manager correctly handles password hashing.
         """
-        if 'is_active' not in validated_data:
-            validated_data['is_active'] = True
+        if "is_active" not in validated_data:
+            validated_data["is_active"] = True
         user = User.objects.create_user(**validated_data)
         return user
 

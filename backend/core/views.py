@@ -1,5 +1,7 @@
 # backend/core/views.py
 
+from datetime import date
+from calendar import monthrange
 from datetime import timedelta
 from django.utils import timezone
 from rest_framework.views import APIView
@@ -15,18 +17,22 @@ from django.db.models import Q, Sum, Count, F, Exists, OuterRef, ProtectedError
 from users.models import User
 from finance.models import Transaction
 from .filters import StudentFilter, GroupFilter
-from .models import Branch, Group, Student, Attendance, StudentGroup, Room
+from .models import Branch, Group, Student, Attendance, StudentGroup, Room, Holiday, GroupScheduleOverride
 from users.permissions import IsAuthenticatedOrAdminForUnsafe, IsAdminUser
-from .serializers import DashboardStatsSerializer, BranchSerializer, RoomSerializer
 from .serializers import (
+    DashboardStatsSerializer, 
+    BranchSerializer,
+    RoomSerializer,
     StudentSerializer,
     StudentCreateSerializer,
     StudentUpdateSerializer,
-)
-from .serializers import (
     GroupSerializer,
     StudentGroupEnrollSerializer,
     StudentEnrollmentSerializer,
+    HolidaySerializer,
+    GroupScheduleOverrideSerializer,
+    GroupDetailSerializer,
+    StudentGroupListSerializer
 )
 
 
@@ -288,7 +294,7 @@ class DailyAiStatsView(APIView):
                     else "❌ hech qanday kirimlar yo'q 😏"
                 ),
                 "lead_summary": "😎 Lidlar: Kecha lidlar guruhga qo'shilmadi",
-                "admin_summary": "👍 administratsiya bo'limi yaxshi ishlamayapti.",
+                "admin_summary": "👍 Administratsiya bo'limi yaxshi ishlamayapti.",
             },
         }
         return Response(data)
@@ -442,12 +448,17 @@ class GroupViewSet(viewsets.ModelViewSet):
     advanced validation for scheduling conflicts.
     """
 
-    serializer_class = GroupSerializer
     permission_classes = [IsAuthenticatedOrAdminForUnsafe]
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_class = GroupFilter
     search_fields = ["name", "teacher__full_name"]
 
+    def get_serializer_class(self):
+        # Use the new detailed serializer for the 'retrieve' (detail) action
+        if self.action == 'retrieve':
+            return GroupDetailSerializer
+        return GroupSerializer
+    
     def get_queryset(self):
         # The existing queryset logic is fine
         queryset = Group.objects.select_related(
@@ -463,6 +474,20 @@ class GroupViewSet(viewsets.ModelViewSet):
             .order_by("created_at")
         )
 
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Overrides the default retrieve to use optimized queries for the detail page.
+        """
+        instance: Group = self.get_object()
+        
+        instance = Group.objects.prefetch_related(
+            'students__student', # Prefetch StudentGroup, then the related Student
+            'price_history'
+        ).get(pk=instance.pk)
+
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+    
     def _check_for_conflicts(self, validated_data, instance=None):
         """
         A helper method containing the core conflict detection logic.
@@ -575,14 +600,14 @@ class GroupViewSet(viewsets.ModelViewSet):
     def archive(self, request, pk=None):
         """Custom action to archive (soft delete) a group."""
         group: Group = self.get_object()
-        active_enrollments = StudentGroup.objects.filter(group=group, is_archived=False)
-        if active_enrollments.exists():  # check this group has active students
-            return Response(
-                {
-                    "detail": f"Ushbu guruh aktiv va unda o'quvchilar mavjud. Arxivlashdan oldin o'quvchilarni guruhdan chiqaring yoki arxivlang."
-                },
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # active_enrollments = StudentGroup.objects.filter(group=group, is_archived=False)
+        # if active_enrollments.exists():  # check this group has active students
+        #     return Response(
+        #         {
+        #             "detail": f"Ushbu guruh aktiv va unda o'quvchilar mavjud. Arxivlashdan oldin o'quvchilarni guruhdan chiqaring yoki arxivlang."
+        #         },
+        #         status=status.HTTP_400_BAD_REQUEST,
+        #     )
         group.is_archived = True
         group.archived_at = timezone.now()
         group.save()
@@ -596,6 +621,81 @@ class GroupViewSet(viewsets.ModelViewSet):
         group.archived_at = None
         group.save()
         return Response({"status": "Group restored"}, status=status.HTTP_200_OK)
+    
+    def _get_date_range_from_params(self, request):
+        """Helper method to parse date range from request query parameters."""
+        year = request.query_params.get('year')
+        month = request.query_params.get('month')
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+        if year and month:
+            try:
+                year, month = int(year), int(month)
+                # Get the first and last day of the given month and year
+                first_day = date(year, month, 1)
+                last_day_of_month = monthrange(year, month)[1]
+                last_day = date(year, month, last_day_of_month)
+                return first_day, last_day
+            except (ValueError, TypeError):
+                raise ValidationError("Yil va oy noto'g'ri formatda.")
+        elif start_date_str and end_date_str:
+            try:
+                start_date = date.fromisoformat(start_date_str)
+                end_date = date.fromisoformat(end_date_str)
+                return start_date, end_date
+            except ValueError:
+                raise ValidationError("Sana noto'g'ri formatda (YYYY-MM-DD).")
+        else:
+            raise ValidationError("Iltimos, 'year' va 'month' yoki 'start_date' va 'end_date' parametrlarini kiriting.")
+        
+    @action(detail=True, methods=['get'])
+    def lesson_schedule(self, request, pk=None):
+        """
+        Returns the regular and actual lesson days for the group within a given range.
+        Accepts params: ?year=2025&month=8 OR ?start_date=2025-08-01&end_date=2025-08-31
+        """
+        group = self.get_object()
+        start_range, end_range = self._get_date_range_from_params(request)
+
+        regular_days = group.regular_lesson_days(start_range, end_range)
+        actual_days = group.actual_lesson_days(start_range, end_range)
+        
+        data = {
+            'group_id': group.id,
+            'group_name': group.name,
+            'checked_range': {'start': start_range, 'end': end_range},
+            'regular_lesson_dates': sorted(list(regular_days)),
+            'actual_lesson_dates': actual_days,
+        }
+        return Response(data)
+
+    # --- THIS IS THE SECOND NEW ACTION ---
+    @action(detail=True, methods=['get'])
+    def schedule_details(self, request, pk=None):
+        """
+        Returns the holidays and schedule overrides that fall within a given range
+        for this specific group.
+        """
+        group: Group = self.get_object()
+        start_range, end_range = self._get_date_range_from_params(request)
+        
+        # Find holidays that fall on this group's regular schedule
+        regular_days_in_range = group.regular_lesson_days(start_range, end_range)
+        holidays = Holiday.objects.filter(date__in=regular_days_in_range)
+        
+        # Find overrides that affect this group in the given range
+        overrides = group.schedule_overrides.filter(
+            Q(original_date__range=(start_range, end_range)) | 
+            Q(new_date__range=(start_range, end_range))
+        )
+        
+        data = {
+            'group_id': group.id,
+            'checked_range': {'start': start_range, 'end': end_range},
+            'holidays': HolidaySerializer(holidays, many=True).data,
+            'overrides': GroupScheduleOverrideSerializer(overrides, many=True).data,
+        }
+        return Response(data)
 
 
 class StudentGroupViewSet(viewsets.ModelViewSet):
@@ -609,6 +709,77 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
     queryset = StudentGroup.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["student", "group"]
+    ordering_fields = ['student__full_name', 'joined_at', 'balance']
+    
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return StudentGroupListSerializer
+        # The enroll serializer is used for creating
+        return StudentGroupEnrollSerializer
+    
+    def get_queryset(self):
+        # Annotate every enrollment with its calculated balance
+        queryset = StudentGroup.objects.select_related('student', 'group').annotate(
+            current_balance=Sum('transactions__amount', filter=Q(transactions__transaction_type='CREDIT'), default=0.0) -
+                    Sum('transactions__amount', filter=Q(transactions__transaction_type='DEBIT'), default=0.0)
+        )
+        is_archived = (
+            self.request.query_params.get("is_archived", "false").lower() == "true"
+        )
+        return (
+            queryset.filter(is_archived=is_archived)
+            .order_by("created_at")
+            .order_by("joined_at")
+        )
+        return queryset
+
+    def get_object(self):
+        queryset = StudentGroup.objects.all()
+        obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
+    
+    @action(detail=True, methods=['patch'])
+    def archive(self, request, pk=None):
+        """
+        Soft-deletes (archives) a student's enrollment in a group.
+        Expects a payload like: { "archived_at": "YYYY-MM-DD" }
+        """
+        enrollment: StudentGroup = self.get_object()
+        archive_date = request.data.get('archived_at')
+
+        # Basic validation
+        if not archive_date:
+            return Response(
+                {"detail": "Chiqarish sanasi kiritilishi shart."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        enrollment.is_archived = True
+        # The 'archived_at' field name in your BaseModel is 'archived_time', let's correct this.
+        # If your model uses 'archived_at', change the name here.
+        enrollment.archived_at = archive_date 
+        enrollment.save()
+        
+        return Response(
+            {'status': f'{enrollment.student.full_name} guruhdan chiqarildi.'},
+            status=status.HTTP_200_OK
+        )
+        
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        """
+        Custom action to restore student group
+        """
+        enrollment: StudentGroup = self.get_object()
+        enrollment.is_archived = False
+        enrollment.archived_at = None
+        enrollment.save()
+        
+        return Response(
+            {'status': f'{enrollment.student.full_name} guruhga qayta qo\'shildi.'},
+            status=status.HTTP_200_OK
+        )
 
 
 class StudentEnrollmentListView(generics.ListAPIView):

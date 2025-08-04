@@ -1,7 +1,16 @@
 # backend/core/serializers.py
 
 from rest_framework import serializers
-from .models import Branch, Group, Student, StudentGroup, Room, Parent
+from .models import (
+    Branch,
+    Group,
+    Student,
+    StudentGroup,
+    Room,
+    Parent,
+    Holiday,
+    GroupScheduleOverride,
+)
 from users.models import User
 from finance.models import GroupPrice
 from dateutil.relativedelta import relativedelta
@@ -17,12 +26,23 @@ class RoomSerializer(serializers.ModelSerializer):
     """
     Serializer for the Room model. Includes a calculated count of active groups.
     """
+
     active_groups_count = serializers.IntegerField(read_only=True)
-    branch = serializers.PrimaryKeyRelatedField(queryset=Branch.objects.filter(is_archived=False))
-    
+    branch = serializers.PrimaryKeyRelatedField(
+        queryset=Branch.objects.filter(is_archived=False)
+    )
+
     class Meta:
         model = Room
-        fields = ["id", "name", "branch", "capacity", "extra_info", "is_archived", "active_groups_count"]
+        fields = [
+            "id",
+            "name",
+            "branch",
+            "capacity",
+            "extra_info",
+            "is_archived",
+            "active_groups_count",
+        ]
 
 
 class DashboardStatsSerializer(serializers.Serializer):
@@ -142,7 +162,7 @@ class GroupSerializer(serializers.ModelSerializer):
     room = serializers.PrimaryKeyRelatedField(
         queryset=Room.objects.filter(is_archived=False), required=False, allow_null=True
     )
-
+    is_archived = serializers.BooleanField(read_only=True)
     # --- THIS IS THE NEW PRICE FIELD ---
     # This field is not on the Group model, so we declare it explicitly.
     # It's write-only because we don't send it back; we send 'current_price' instead.
@@ -174,6 +194,7 @@ class GroupSerializer(serializers.ModelSerializer):
             "room",
             "price",  # Add price field
             # Read-only display fields
+            "is_archived",
             "teacher_name",
             "branch_name",
             "room_name",
@@ -269,10 +290,10 @@ class StudentGroupEnrollSerializer(serializers.ModelSerializer):
     """
     Serializer specifically for creating (enrolling) a new StudentGroup record.
     """
-
     class Meta:
         model = StudentGroup
         fields = [
+            "id",
             "student",
             "group",
             "joined_at",
@@ -404,3 +425,95 @@ class StudentCreateSerializer(serializers.ModelSerializer):
             StudentGroup.objects.create(student=student, **group_data)
 
         return student
+
+
+class HolidaySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Holiday
+        fields = "__all__"
+
+
+class GroupScheduleOverrideSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupScheduleOverride
+        fields = "__all__"
+
+class GroupPriceSimpleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GroupPrice
+        fields = ['price', 'start_date']
+
+class StudentInGroupSerializer(serializers.ModelSerializer):
+    """Serializer for students listed within a group detail view."""
+    id = serializers.IntegerField(source='student.id', read_only=True)
+    full_name = serializers.CharField(source='student.full_name', read_only=True)
+    phone_number = serializers.CharField(source='student.phone_number', read_only=True)
+    profile_photo = serializers.ImageField(source='student.profile_photo', read_only=True)
+    balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = StudentGroup
+        fields = [
+            # Fields from the Student model
+            'id', 'full_name', 'phone_number', 'profile_photo',
+            
+            # Fields from the StudentGroup model itself
+            'joined_at',
+            'price', # The specific price for this student in this group
+            'balance',
+        ]
+
+class GroupDetailSerializer(serializers.ModelSerializer):
+    """
+    A comprehensive serializer for the single group detail page.
+    """
+    teacher_id = serializers.IntegerField(source='teacher.id', read_only=True)
+    teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
+    branch_name = serializers.CharField(source='branch.name', read_only=True)
+    room_name = serializers.CharField(source='room.name', read_only=True, allow_null=True)
+    current_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    
+    # Nested list of all students in the group
+    students_list = StudentInGroupSerializer(source='students', many=True, read_only=True)
+    
+    # Nested list of all price changes for the group
+    price_history = GroupPriceSimpleSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Group
+        fields = [
+            'id', 'name', 'start_date', 'end_date', 'course_start_time',
+            'course_end_time', 'weekdays', 'comment', 'color', 'text_color',
+            'teacher_id', 'teacher_name', 'branch_name', 'room_name', 'current_price',
+            'students_list', 'price_history', 'is_archived', 'archived_at'
+        ]
+
+
+class StudentGroupListSerializer(serializers.ModelSerializer):
+    """
+    A comprehensive serializer for listing StudentGroup enrollments.
+    This is the single source of truth for the "O'quvchilar" tab in the Group Detail page.
+    """
+    # --- Nested data from the Student model ---
+    student_id = serializers.IntegerField(source='student.id', read_only=True)
+    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
+    student_phone_number = serializers.CharField(source='student.phone_number', read_only=True)
+    student_profile_photo = serializers.ImageField(source='student.profile_photo', read_only=True)
+    
+    # --- Calculated balance field ---
+    current_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+
+    class Meta:
+        model = StudentGroup
+        fields = [
+            'id', # The ID of the StudentGroup enrollment itself
+            'student_id',
+            'student_full_name',
+            'student_phone_number',
+            'student_profile_photo',
+            'joined_at',
+            'price',
+            'current_balance',
+            'is_archived',
+            'archived_at',
+        ]

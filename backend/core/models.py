@@ -1,3 +1,4 @@
+from __future__ import annotations
 from django.db import models
 from users.models import User
 from django.utils import timezone
@@ -5,7 +6,7 @@ from django.db.models import Sum, Q
 from colorfield.fields import ColorField
 from django.core.exceptions import ValidationError
 from django.core.validators import RegexValidator
-
+from datetime import date, timedelta
 
 WEEKDAY_DIGIT_VALIDATOR = RegexValidator(
     regex=r"^[1-7]{1,7}$",
@@ -35,8 +36,8 @@ class Branch(BaseModel):
         indexes = [
             models.Index(fields=["name"]),
         ]
-        verbose_name = "Branch"
-        verbose_name_plural = "Branches"
+        verbose_name = "Flial"
+        verbose_name_plural = "Fliallar"
 
     def __str__(self):
         return f"{self.name}"
@@ -56,8 +57,8 @@ class Room(BaseModel):
         indexes = [
             models.Index(fields=["name"]),
         ]
-        verbose_name = "Room"
-        verbose_name_plural = "Rooms"
+        verbose_name = "Xona"
+        verbose_name_plural = "Xonalar"
 
     def __str__(self):
         return f"{self.name} ({self.branch.name})"
@@ -91,8 +92,8 @@ class Student(BaseModel):
             models.Index(fields=["full_name"]),
             models.Index(fields=["phone_number"]),
         ]
-        verbose_name = "Student"
-        verbose_name_plural = "Students"
+        verbose_name = "O'quvchi"
+        verbose_name_plural = "O'quvchilar"
 
     def __str__(self):
         return f"{self.full_name} - {self.phone_number}"
@@ -117,8 +118,8 @@ class Parent(BaseModel):
             models.Index(fields=["full_name"]),
             models.Index(fields=["phone_number"]),
         ]
-        verbose_name = "Parent"
-        verbose_name_plural = "Parents"
+        verbose_name = "Ota-ona"
+        verbose_name_plural = "Ota-onalar"
 
     def __str__(self):
         return f"{self.full_name} - ({self.student.full_name})"
@@ -197,12 +198,106 @@ class Group(BaseModel):
             .price
         )
 
+    def regular_lesson_days(self, start_date_range, end_date_range):
+        """
+        Calculates the regular lesson dates for this group within a given date range.
+        :param start_date_range: The beginning of the date range to check (inclusive).
+        :param end_date_range: The end of the date range to check (inclusive).
+        :return: A sorted list of `datetime.date` objects representing the regular lesson days.
+        """
+
+        # Convert group weekdays string '135' to a set of integers {1, 3, 5}
+        # Note: Django's weekday() is Monday=0, Sunday=6. ISO weekday is Monday=1, Sunday=7.
+        # We will use ISO weekday for clarity.
+        scheduled_weekdays = {int(day) for day in self.weekdays}
+
+        # Determine the effective date range for calculation, which is the intersection
+        # of the group's lifetime and the requested date range.
+        effective_start = max(self.start_date, start_date_range)
+        effective_end = min(self.end_date, end_date_range)
+
+        # Use a set for lesson_dates for efficient addition and removal
+        lesson_dates = set()
+
+        # Iterate day by day through the effective range
+        current_date = effective_start
+        while current_date <= effective_end:
+            # isoweekday(): Monday is 1 and Sunday is 7
+            if current_date.isoweekday() in scheduled_weekdays:
+                lesson_dates.add(current_date)
+            current_date += timedelta(days=1)
+
+        return sorted(list(lesson_dates))
+
+    def actual_lesson_days(self, start_date_range, end_date_range):
+        """
+        Calculates the actual lesson dates for this group within a given date range.
+
+        This method accounts for:
+        1. The group's regular weekly schedule (weekdays).
+        2. The group's overall start and end dates.
+        3. Public holidays.
+        4. Schedule overrides (cancellations, reschedules, and extra lessons).
+
+        :param start_date_range: The beginning of the date range to check (inclusive).
+        :param end_date_range: The end of the date range to check (inclusive).
+        :return: A sorted list of `datetime.date` objects representing the actual lesson days.
+        """
+        effective_start = max(self.start_date, start_date_range)
+        effective_end = min(self.end_date, end_date_range)
+
+        # --- Step 1: Generate the base set of potential lesson days ---
+        # These are the days that fall on the group's schedule within the requested range.
+        lesson_dates: set = set(
+            self.regular_lesson_days(start_date_range, end_date_range)
+        )
+        # --- Step 2: Subtract holidays ---
+        # Get all holiday dates within the effective range from the database.
+        # .values_list('date', flat=True) is very efficient.
+        holidays_in_range = Holiday.objects.filter(
+            date__range=(effective_start, effective_end)
+        ).values_list("date", flat=True)
+
+        # Remove any lesson date that falls on a holiday
+        lesson_dates.difference_update(holidays_in_range)
+
+        # --- Step 3: Apply schedule overrides ---
+        # Get all relevant overrides for this group from the database.
+        overrides = self.schedule_overrides.filter(
+            # Find overrides that affect the calculated lesson dates
+            Q(original_date__in=lesson_dates)
+            |
+            # Or overrides that add a new lesson into our target range
+            Q(new_date__range=(start_date_range, end_date_range))
+        )
+
+        for override in overrides:
+            # If a lesson was cancelled, remove its original date
+            if override.is_cancelled and override.original_date in lesson_dates:
+                lesson_dates.remove(override.original_date)
+
+            # If a lesson was rescheduled, remove the original and add the new one
+            elif not override.is_extra and not override.is_cancelled:
+                if override.original_date in lesson_dates:
+                    lesson_dates.remove(override.original_date)
+                # Only add the new date if it falls within our target range
+                if start_date_range <= override.new_date <= end_date_range:
+                    lesson_dates.add(override.new_date)
+
+            # If it's an extra lesson, just add the new date
+            elif override.is_extra:
+                if start_date_range <= override.new_date <= end_date_range:
+                    lesson_dates.add(override.new_date)
+
+        # --- Step 4: Return the final, sorted list of dates ---
+        return sorted(list(lesson_dates))
+
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
         ]
-        verbose_name = "Group"
-        verbose_name_plural = "Groups"
+        verbose_name = "Guruh"
+        verbose_name_plural = "Guruhlar"
 
     def __str__(self):
         return f"{self.name} | {self.branch.name} - {self.teacher.full_name}"
@@ -284,8 +379,8 @@ class Attendance(models.Model):
         indexes = [
             models.Index(fields=["date"]),
         ]
-        verbose_name = "Attendance"
-        verbose_name_plural = "Attendances"
+        verbose_name = "Davomat"
+        verbose_name_plural = "Davomatlar"
 
     def __str__(self):
         return f"{self.student_group.student.full_name} on {self.date} - {'✅' if self.is_present else '❌'}"
@@ -299,8 +394,8 @@ class Holiday(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "Holiday"
-        verbose_name_plural = "Holidays"
+        verbose_name = "Bayram"
+        verbose_name_plural = "Bayramlar"
         ordering = ["date"]
 
     def __str__(self):
@@ -388,15 +483,3 @@ class GroupScheduleOverride(models.Model):
                 raise ValidationError(
                     "Rescheduled lessons must have start and end time."
                 )
-
-    @property
-    def balance(self):
-        """
-        Calculates the real-time balance for this specific student-group enrollment.
-        """
-        # Aggregate all transactions linked to THIS specific enrollment
-        aggregation = self.transactions.aggregate(
-            total_debits=Sum("amount", filter=Q(transaction_type="DEBIT"), default=0),
-            total_credits=Sum("amount", filter=Q(transaction_type="CREDIT"), default=0),
-        )
-        return aggregation["total_credits"] - aggregation["total_debits"]

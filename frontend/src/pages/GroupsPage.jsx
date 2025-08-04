@@ -8,7 +8,7 @@ import React, {
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -67,6 +67,7 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
   const { theme, selectedBranchId } = useSettings();
   const { user: currentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   // --- STATE MANAGEMENT ---
   const [groups, setGroups] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -177,8 +178,12 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
     setActionPopup({ isOpen: false, data: null, referenceElement: null });
   };
 
-  const handleView = (group) =>
-    alert(`Viewing ${group.name} - ${group.teacher_name}`);
+  const handleView = (group) => {
+    if(group && group.id){
+      navigate(`/groups/${group.id}`);
+    }
+  }
+    
 
   const handleEdit = (group) => {
     setSelectedGroup(group);

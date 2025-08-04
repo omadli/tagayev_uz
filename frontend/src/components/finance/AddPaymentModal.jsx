@@ -72,7 +72,12 @@ const schema = yup.object().shape({
     ),
 });
 
-const AddPaymentModal = ({ isOpen, onClose, initialStudent = null }) => {
+const AddPaymentModal = ({
+  isOpen,
+  onClose,
+  initialStudent = null,
+  initialGroup = null,
+}) => {
   const { user: currentUser } = useAuth();
   const { theme, selectedBranchId } = useSettings(); // Get current theme
   const muiTheme = getMuiTheme(theme); // Create the appropriate MUI theme
@@ -196,6 +201,19 @@ const AddPaymentModal = ({ isOpen, onClose, initialStudent = null }) => {
       setEnrollments([]);
     }
   }, [selectedStudent, setValue]);
+
+  useEffect(() => {
+    if(!initialGroup) return;
+    let filtered_enrollments = enrollments.filter((e) => e.value == initialGroup);
+    if(filtered_enrollments.length == 0) return;
+    const enrollment = filtered_enrollments[0];
+    setValue("student_group", enrollment);
+    const amountToPay =
+      enrollment.balance < 0
+        ? Math.abs(enrollment.balance)
+        : enrollment.price;
+    setValue("amount", amountToPay);
+  }, [enrollments, initialGroup]);
 
   // --- UPDATED useEffect for balance and upcoming payment ---
   useEffect(() => {
@@ -328,7 +346,7 @@ const AddPaymentModal = ({ isOpen, onClose, initialStudent = null }) => {
                         {...field}
                         options={enrollments}
                         placeholder="Guruhni tanlang"
-                        isDisabled={!selectedStudent}
+                        isDisabled={!selectedStudent || !!initialGroup}
                         menuPortalTarget={document.body}
                         styles={reactSelectStyles}
                       />

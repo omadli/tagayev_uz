@@ -4,7 +4,11 @@ from django.utils.html import format_html
 from django.contrib.auth.models import Group
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from import_export.admin import ImportExportModelAdmin
-from django.contrib.auth.forms import AdminPasswordChangeForm, UserChangeForm, ReadOnlyPasswordHashField
+from django.contrib.auth.forms import (
+    AdminPasswordChangeForm,
+    UserChangeForm,
+    ReadOnlyPasswordHashField,
+)
 
 from .models import User, LoginLog
 
@@ -60,6 +64,7 @@ class UserChangeForm(forms.ModelForm):
             "the user’s password."
         ),
     )
+
     class Meta:
         model = User
         fields = (
@@ -94,7 +99,18 @@ class UserAdmin(ImportExportModelAdmin, BaseUserAdmin):
     readonly_fields = ("photo_tag",)
 
     fieldsets = (
-        (None, {"fields": ("full_name", "phone_number", "profile_photo", "photo_tag", "password")}),
+        (
+            None,
+            {
+                "fields": (
+                    "full_name",
+                    "phone_number",
+                    "profile_photo",
+                    "photo_tag",
+                    "password",
+                )
+            },
+        ),
         ("System Roles", {"fields": ("is_active", "is_ceo", "is_teacher", "is_admin")}),
         ("Staff info", {"fields": ("enrollment_date", "salary", "percentage")}),
         ("Permissions", {"fields": ("is_superuser", "user_permissions")}),
