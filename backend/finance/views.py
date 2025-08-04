@@ -1,3 +1,5 @@
+from datetime import timedelta
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -19,16 +21,27 @@ class GroupPriceViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = GroupPriceSerializer
+    queryset = GroupPrice.objects.select_related("group").all().order_by("start_date")
     permission_classes = [IsAuthenticatedOrAdminForUnsafe]
     # Allow filtering by group ID, e.g., /api/finance/group-prices/?group=5
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["group"]
 
-    def get_queryset(self):
-        """
-        Return all price history records, ordered by the most recent start date.
-        """
-        return GroupPrice.objects.all().order_by("start_date")
+    def perform_destroy(self, instance: GroupPrice):
+        # ---  PREVENT DELETING RECENT PRICES ---
+        four_days_ago = timezone.now().date() - timedelta(days=4)
+        if instance.start_date <= four_days_ago:
+            # You can use DRF's PermissionDenied for a 403 Forbidden status
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied(
+                detail="O'tgan 4 kundan eski narxlarni o'chirib bo'lmaydi."
+            )
+        if instance.group.price_history.count() <= 1:
+            from rest_framework.exceptions import ValidationError
+
+            raise ValidationError(detail="Guruh uchun kamida 1 ta narx qolishi kerak!")
+        instance.delete()
 
 
 class PaymentTypeViewSet(viewsets.ModelViewSet):

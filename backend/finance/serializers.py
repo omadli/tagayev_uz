@@ -3,6 +3,8 @@ from .models import GroupPrice, PaymentType, Transaction
 from core.models import Group, StudentGroup
 from users.models import User
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
+from datetime import timedelta
 
 
 class GroupPriceSerializer(serializers.ModelSerializer):
@@ -19,6 +21,18 @@ class GroupPriceSerializer(serializers.ModelSerializer):
         # Make 'group' field write-only as we display 'group_name'
         extra_kwargs = {"group": {"write_only": True}}
 
+    def validate_start_date(self, value):
+        """
+        Custom validation for the start_date field.
+        """
+        if self.instance:  # 'self.instance' exists only during an update
+            four_days_ago = timezone.now().date() - timedelta(days=4)
+            if self.instance.start_date <= four_days_ago:
+                raise serializers.ValidationError(
+                    "O'tgan 4 kundan eski narxlarni o'zgartirib bo'lmaydi."
+                )
+        return value
+
     def validate(self, data):
         """
         Check for uniqueness constraint. A group cannot have two different prices
@@ -26,6 +40,16 @@ class GroupPriceSerializer(serializers.ModelSerializer):
         """
         group = data.get("group")
         start_date = data.get("start_date")
+
+        group = data.get("group") or self.instance.group
+
+        #  Check if the new price's start_date is within the group's lifetime.
+        if not (group.start_date <= start_date <= group.end_date):
+            raise serializers.ValidationError(
+                {
+                    "start_date": f"Sana guruhning mavjudlik oralig'ida bo'lishi kerak ({group.start_date} dan {group.end_date} gacha)."
+                }
+            )
 
         if GroupPrice.objects.filter(group=group, start_date=start_date).exists():
             raise serializers.ValidationError(
