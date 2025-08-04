@@ -203,15 +203,15 @@ const AddPaymentModal = ({
   }, [selectedStudent, setValue]);
 
   useEffect(() => {
-    if(!initialGroup) return;
-    let filtered_enrollments = enrollments.filter((e) => e.value == initialGroup);
-    if(filtered_enrollments.length == 0) return;
+    if (!initialGroup) return;
+    let filtered_enrollments = enrollments.filter(
+      (e) => e.value == initialGroup
+    );
+    if (filtered_enrollments.length == 0) return;
     const enrollment = filtered_enrollments[0];
     setValue("student_group", enrollment);
     const amountToPay =
-      enrollment.balance < 0
-        ? Math.abs(enrollment.balance)
-        : enrollment.price;
+      enrollment.balance < 0 ? Math.abs(enrollment.balance) : enrollment.price;
     setValue("amount", amountToPay);
   }, [enrollments, initialGroup]);
 
@@ -262,7 +262,7 @@ const AddPaymentModal = ({
 
     const toastId = toast.loading("To'lov qo'shilmoqda...");
     try {
-      await api.post("/api/finance/transactions/", payload);
+      await api.post("/finance/transactions/", payload);
       toast.success("To'lov muvaffaqiyatli qo'shildi", { id: toastId });
       handleClose();
       // Optionally refresh other data, e.g., student list
