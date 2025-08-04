@@ -7,36 +7,13 @@ import toast from "react-hot-toast";
 import { X } from "lucide-react";
 import Select from "react-select";
 import Portal from "../ui/Portal";
-import clsx from "clsx";
 
-// Import all our custom UI components
 import DateInput from "../ui/DateInput";
 import ColorInput from "../ui/ColorInput";
 import TimeInput from "../ui/TimeInput";
 import Input from "../ui/Input";
 
-// --- A validation schema specifically for editing ---
-// It does NOT include the 'price' field.
-const schema = yup.object().shape({
-  name: yup.string().required("Guruh nomi majburiy"),
-  teacher: yup.object().required("O'qituvchi tanlanishi shart").nullable(),
-  room: yup.object().required("Xona tanlanishi shart").nullable(),
-  start_date: yup.date().required("Boshlanish sanasi majburiy"),
-  end_date: yup
-    .date()
-    .required("Tugash sanasi majburiy")
-    .min(yup.ref("start_date"), "Tugash sanasi keyinroq bo'lishi kerak"),
-  course_start_time: yup.string().required("Boshlanish vaqti majburiy"),
-  course_end_time: yup.string().required("Tugash vaqti majburiy"),
-  weekdays: yup
-    .array()
-    .min(1, "Kamida bitta hafta kuni tanlanishi kerak")
-    .required(),
-  color: yup.string().required(),
-  text_color: yup.string().required(),
-  comment: yup.string(),
-});
-
+// --- Weekday Options ---
 const weekdayTypeOptions = [
   { value: "135", label: "Toq kunlar" },
   { value: "246", label: "Juft kunlar" },
@@ -53,6 +30,29 @@ const customWeekdayOptions = [
   { value: "7", label: "Yakshanba" },
 ];
 
+// --- Validation Schema ---
+const schema = yup.object().shape({
+  name: yup.string().required("Guruh nomi majburiy"),
+  teacher: yup.object().required("O'qituvchi tanlanishi shart").nullable(),
+  room: yup.object().required("Xona tanlanishi shart").nullable(),
+  start_date: yup.date().required("Boshlanish sanasi majburiy"),
+  end_date: yup
+    .date()
+    .required("Tugash sanasi majburiy")
+    .min(yup.ref("start_date"), "Tugash sanasi keyinroq bo'lishi kerak"),
+  course_start_time: yup.string().required("Boshlanish vaqti majburiy"),
+  course_end_time: yup.string().required("Tugash vaqti majburiy"),
+  weekday_type: yup.object().required(),
+  custom_weekdays: yup.array().when("weekday_type", {
+    is: (val) => val?.value === "custom",
+    then: (schema) => schema.min(1, "Kamida bitta hafta kuni tanlanishi kerak"),
+    otherwise: (schema) => schema.optional(),
+  }),
+  color: yup.string().required(),
+  text_color: yup.string().required(),
+  comment: yup.string(),
+});
+
 const EditGroupModal = ({
   isOpen,
   onClose,
@@ -60,7 +60,6 @@ const EditGroupModal = ({
   group,
   selectedBranchId,
 }) => {
-  // State for dropdown options
   const [teachers, setTeachers] = useState([]);
   const [rooms, setRooms] = useState([]);
 
@@ -76,17 +75,16 @@ const EditGroupModal = ({
   });
 
   const selectedWeekdayType = watch("weekday_type");
-  // --- EFFECT TO PRE-FILL THE FORM ---
-  // This runs when the modal opens or the 'group' prop changes.
+
   useEffect(() => {
-    if (group && isOpen) {
-      // Fetch dropdown data
-      const fetchFilterData = async () => {
+    if (isOpen && group) {
+      const fetchData = async () => {
         try {
           const [teachersRes, roomsRes] = await Promise.all([
             api.get("/users/teachers/?is_archived=false"),
             api.get(`/core/rooms/?branch=${selectedBranchId}`),
           ]);
+
           const teacherOptions = teachersRes.data.map((t) => ({
             value: t.id,
             label: t.full_name,
@@ -95,18 +93,22 @@ const EditGroupModal = ({
             value: r.id,
             label: r.name,
           }));
+
           setTeachers(teacherOptions);
           setRooms(roomOptions);
-          let weekdays = group.weekdays
+
+          const weekdays = group.weekdays
             .split("")
             .map((day) =>
               customWeekdayOptions.find((opt) => opt.value === day)
             );
-          // Pre-fill the form with the group's existing data
+
           reset({
             name: group.name,
-            teacher: teacherOptions.find((t) => t.label === group.teacher_name),
-            room: roomOptions.find((r) => r.label === group.room_name),
+            teacher:
+              teacherOptions.find((t) => t.label === group.teacher_name) ||
+              null,
+            room: roomOptions.find((r) => r.label === group.room_name) || null,
             start_date: new Date(group.start_date),
             end_date: new Date(group.end_date),
             course_start_time: group.course_start_time.slice(0, 5),
@@ -117,15 +119,16 @@ const EditGroupModal = ({
             custom_weekdays: weekdays,
             color: group.color,
             text_color: group.text_color,
-            comment: group.comment,
+            comment: group.comment || "",
           });
-        } catch (error) {
+        } catch {
           toast.error("Ma'lumotlarni yuklashda xatolik.");
         }
       };
-      fetchFilterData();
+
+      fetchData();
     }
-  }, [group, isOpen, selectedBranchId, reset]);
+  }, [isOpen, group, selectedBranchId, reset]);
 
   const handleClose = () => {
     reset();
@@ -133,13 +136,11 @@ const EditGroupModal = ({
   };
 
   const onSubmit = async (data) => {
-    // Prepare the payload for a PATCH request
-    let finalWeekdays;
-    if (data.weekday_type.value === "custom") {
-      finalWeekdays = data.custom_weekdays.map((day) => day.value).join("");
-    } else {
-      finalWeekdays = data.weekday_type.value;
-    }
+    const finalWeekdays =
+      data.weekday_type.value === "custom"
+        ? data.custom_weekdays.map((d) => d.value).join("")
+        : data.weekday_type.value;
+
     const payload = {
       name: data.name,
       teacher: data.teacher.value,
@@ -160,13 +161,13 @@ const EditGroupModal = ({
       toast.success("Muvaffaqiyatli saqlandi", { id: toastId });
       refreshGroups();
       handleClose();
-    } catch (error) {
-      const errorData = error.response?.data;
-      const errorMsg =
+    } catch (err) {
+      const errorData = err.response?.data;
+      const msg =
         typeof errorData === "object"
           ? Object.values(errorData).flat().join(" ")
           : "Xatolik yuz berdi";
-      toast.error(errorMsg, { id: toastId });
+      toast.error(msg, { id: toastId });
     }
   };
 
@@ -198,8 +199,6 @@ const EditGroupModal = ({
               error={errors.name}
             />
 
-            {/* The price field is NOT included in the edit form */}
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-xs font-medium text-gray-500 px-2">
@@ -212,14 +211,18 @@ const EditGroupModal = ({
                     <Select
                       {...field}
                       options={teachers}
-                      placeholder="Tanlang..."
                       styles={selectStyles}
                       menuPortalTarget={document.body}
                     />
                   )}
                 />
-                {errors.teacher && <p>{errors.teacher.message}</p>}
+                {errors.teacher && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.teacher.message}
+                  </p>
+                )}
               </div>
+
               <div>
                 <label className="text-xs font-medium text-gray-500 px-2">
                   Xona
@@ -231,13 +234,16 @@ const EditGroupModal = ({
                     <Select
                       {...field}
                       options={rooms}
-                      placeholder="Tanlang..."
                       styles={selectStyles}
                       menuPortalTarget={document.body}
                     />
                   )}
                 />
-                {errors.room && <p>{errors.room.message}</p>}
+                {errors.room && (
+                  <p className="text-red-500 text-xs mt-1">
+                    {errors.room.message}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -256,7 +262,7 @@ const EditGroupModal = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <TimeInput
                 name="course_start_time"
                 label="Boshlanish vaqti"
@@ -282,7 +288,6 @@ const EditGroupModal = ({
                   <Select
                     {...field}
                     options={weekdayTypeOptions}
-                    // Add these two props to fix the z-index
                     styles={selectStyles}
                     menuPortalTarget={document.body}
                   />
@@ -303,7 +308,6 @@ const EditGroupModal = ({
                       {...field}
                       isMulti
                       options={customWeekdayOptions}
-                      // Add these two props here as well
                       styles={selectStyles}
                       menuPortalTarget={document.body}
                     />
