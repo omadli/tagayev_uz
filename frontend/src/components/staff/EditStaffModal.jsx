@@ -280,7 +280,7 @@ const EditStaffModal = ({ isOpen, onClose, refreshUsers, user }) => {
                 id="password"
                 label="Parol"
                 type={showPassword ? "text" : "password"}
-                register={register("password")}
+                {...register("password")}
                 error={errors.password}
               />
               <button

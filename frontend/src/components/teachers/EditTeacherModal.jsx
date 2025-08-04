@@ -215,7 +215,7 @@ const EditTeacherModal = ({ isOpen, onClose, refreshTeachers, teacher }) => {
             <Input
               id="full_name"
               label="Ism familiya"
-              register={register("full_name")}
+              {...register("full_name")}
               error={errors.full_name}
             />
 
@@ -255,7 +255,7 @@ const EditTeacherModal = ({ isOpen, onClose, refreshTeachers, teacher }) => {
                 id="password"
                 label="Parol"
                 type={showPassword ? "text" : "password"}
-                register={register("password")}
+                {...register("password")}
                 error={errors.password}
               />
               <button
