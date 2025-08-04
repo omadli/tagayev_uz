@@ -7,7 +7,7 @@ import { ThemeProvider } from "@mui/material/styles";
 import { StaticDatePicker } from "@mui/x-date-pickers/StaticDatePicker";
 import { PickersDay } from "@mui/x-date-pickers/PickersDay";
 import { CircularProgress } from "@mui/material";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import clsx from "clsx";
 import { useTheme } from "@mui/material/styles";
 
@@ -114,7 +114,7 @@ const GroupCalendarTab = ({ group }) => {
           </div>
         )}
         <StaticDatePicker
-          views={["day", "month", "year",]}
+          views={["day", "month", "year"]}
           defaultValue={currentMonth}
           onMonthChange={(newMonth) => setCurrentMonth(newMonth)}
           minDate={dayjs(group.start_date)}
@@ -131,7 +131,6 @@ const GroupCalendarTab = ({ group }) => {
             actionBar: { actions: [] },
           }}
           displayStaticWrapperAs="desktop"
-          readOnly
         />
 
         {/* --- LEGEND --- */}
