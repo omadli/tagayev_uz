@@ -290,6 +290,7 @@ class StudentGroupEnrollSerializer(serializers.ModelSerializer):
     """
     Serializer specifically for creating (enrolling) a new StudentGroup record.
     """
+
     class Meta:
         model = StudentGroup
         fields = [
@@ -438,54 +439,84 @@ class GroupScheduleOverrideSerializer(serializers.ModelSerializer):
         model = GroupScheduleOverride
         fields = "__all__"
 
+
 class GroupPriceSimpleSerializer(serializers.ModelSerializer):
     class Meta:
         model = GroupPrice
-        fields = ['price', 'start_date']
+        fields = ["id", "price", "start_date"]
+
 
 class StudentInGroupSerializer(serializers.ModelSerializer):
     """Serializer for students listed within a group detail view."""
-    id = serializers.IntegerField(source='student.id', read_only=True)
-    full_name = serializers.CharField(source='student.full_name', read_only=True)
-    phone_number = serializers.CharField(source='student.phone_number', read_only=True)
-    profile_photo = serializers.ImageField(source='student.profile_photo', read_only=True)
+
+    id = serializers.IntegerField(source="student.id", read_only=True)
+    full_name = serializers.CharField(source="student.full_name", read_only=True)
+    phone_number = serializers.CharField(source="student.phone_number", read_only=True)
+    profile_photo = serializers.ImageField(
+        source="student.profile_photo", read_only=True
+    )
     balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = StudentGroup
         fields = [
             # Fields from the Student model
-            'id', 'full_name', 'phone_number', 'profile_photo',
-            
+            "id",
+            "full_name",
+            "phone_number",
+            "profile_photo",
             # Fields from the StudentGroup model itself
-            'joined_at',
-            'price', # The specific price for this student in this group
-            'balance',
+            "joined_at",
+            "price",  # The specific price for this student in this group
+            "balance",
         ]
+
 
 class GroupDetailSerializer(serializers.ModelSerializer):
     """
     A comprehensive serializer for the single group detail page.
     """
-    teacher_id = serializers.IntegerField(source='teacher.id', read_only=True)
-    teacher_name = serializers.CharField(source='teacher.full_name', read_only=True)
-    branch_name = serializers.CharField(source='branch.name', read_only=True)
-    room_name = serializers.CharField(source='room.name', read_only=True, allow_null=True)
-    current_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
-    
+
+    teacher_id = serializers.IntegerField(source="teacher.id", read_only=True)
+    teacher_name = serializers.CharField(source="teacher.full_name", read_only=True)
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
+    room_name = serializers.CharField(
+        source="room.name", read_only=True, allow_null=True
+    )
+    current_price = serializers.DecimalField(
+        max_digits=10, decimal_places=2, read_only=True
+    )
+
     # Nested list of all students in the group
-    students_list = StudentInGroupSerializer(source='students', many=True, read_only=True)
-    
+    students_list = StudentInGroupSerializer(
+        source="students", many=True, read_only=True
+    )
+
     # Nested list of all price changes for the group
     price_history = GroupPriceSimpleSerializer(many=True, read_only=True)
 
     class Meta:
         model = Group
         fields = [
-            'id', 'name', 'start_date', 'end_date', 'course_start_time',
-            'course_end_time', 'weekdays', 'comment', 'color', 'text_color',
-            'teacher_id', 'teacher_name', 'branch_name', 'room_name', 'current_price',
-            'students_list', 'price_history', 'is_archived', 'archived_at'
+            "id",
+            "name",
+            "start_date",
+            "end_date",
+            "course_start_time",
+            "course_end_time",
+            "weekdays",
+            "comment",
+            "color",
+            "text_color",
+            "teacher_id",
+            "teacher_name",
+            "branch_name",
+            "room_name",
+            "current_price",
+            "students_list",
+            "price_history",
+            "is_archived",
+            "archived_at",
         ]
 
 
@@ -494,26 +525,35 @@ class StudentGroupListSerializer(serializers.ModelSerializer):
     A comprehensive serializer for listing StudentGroup enrollments.
     This is the single source of truth for the "O'quvchilar" tab in the Group Detail page.
     """
+
     # --- Nested data from the Student model ---
-    student_id = serializers.IntegerField(source='student.id', read_only=True)
-    student_full_name = serializers.CharField(source='student.full_name', read_only=True)
-    student_phone_number = serializers.CharField(source='student.phone_number', read_only=True)
-    student_profile_photo = serializers.ImageField(source='student.profile_photo', read_only=True)
-    
+    student_id = serializers.IntegerField(source="student.id", read_only=True)
+    student_full_name = serializers.CharField(
+        source="student.full_name", read_only=True
+    )
+    student_phone_number = serializers.CharField(
+        source="student.phone_number", read_only=True
+    )
+    student_profile_photo = serializers.ImageField(
+        source="student.profile_photo", read_only=True
+    )
+
     # --- Calculated balance field ---
-    current_balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    current_balance = serializers.DecimalField(
+        max_digits=12, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = StudentGroup
         fields = [
-            'id', # The ID of the StudentGroup enrollment itself
-            'student_id',
-            'student_full_name',
-            'student_phone_number',
-            'student_profile_photo',
-            'joined_at',
-            'price',
-            'current_balance',
-            'is_archived',
-            'archived_at',
+            "id",  # The ID of the StudentGroup enrollment itself
+            "student_id",
+            "student_full_name",
+            "student_phone_number",
+            "student_profile_photo",
+            "joined_at",
+            "price",
+            "current_balance",
+            "is_archived",
+            "archived_at",
         ]

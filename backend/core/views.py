@@ -17,10 +17,19 @@ from django.db.models import Q, Sum, Count, F, Exists, OuterRef, ProtectedError
 from users.models import User
 from finance.models import Transaction
 from .filters import StudentFilter, GroupFilter
-from .models import Branch, Group, Student, Attendance, StudentGroup, Room, Holiday, GroupScheduleOverride
+from .models import (
+    Branch,
+    Group,
+    Student,
+    Attendance,
+    StudentGroup,
+    Room,
+    Holiday,
+    GroupScheduleOverride,
+)
 from users.permissions import IsAuthenticatedOrAdminForUnsafe, IsAdminUser
 from .serializers import (
-    DashboardStatsSerializer, 
+    DashboardStatsSerializer,
     BranchSerializer,
     RoomSerializer,
     StudentSerializer,
@@ -32,7 +41,7 @@ from .serializers import (
     HolidaySerializer,
     GroupScheduleOverrideSerializer,
     GroupDetailSerializer,
-    StudentGroupListSerializer
+    StudentGroupListSerializer,
 )
 
 
@@ -60,23 +69,24 @@ class RoomViewSet(viewsets.ModelViewSet):
     serializer_class = RoomSerializer
     permission_classes = [IsAuthenticatedOrAdminForUnsafe]
     filter_backends = [DjangoFilterBackend, SearchFilter]
-    search_fields = ['name', 'extra_info']
-    search_param = 'search'
+    search_fields = ["name", "extra_info"]
+    search_param = "search"
     filterset_fields = ["branch"]
 
     def get_queryset(self):
         today = timezone.now().date()
-        
-        queryset = Room.objects.select_related('branch').annotate(
+
+        queryset = Room.objects.select_related("branch").annotate(
             active_groups_count=Count(
-                'group', 
-                filter=Q(group__is_archived=False, group__end_date__gte=today)
+                "group", filter=Q(group__is_archived=False, group__end_date__gte=today)
             )
         )
-        
-        is_archived = self.request.query_params.get('is_archived', 'false').lower() == 'true'
-        return queryset.filter(is_archived=is_archived).order_by('name')
-    
+
+        is_archived = (
+            self.request.query_params.get("is_archived", "false").lower() == "true"
+        )
+        return queryset.filter(is_archived=is_archived).order_by("name")
+
     def _check_for_active_groups(self, room):
         """Helper method to check for active groups in a room."""
         today = timezone.now().date()
@@ -96,26 +106,26 @@ class RoomViewSet(viewsets.ModelViewSet):
         obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
         return obj
-    
-    @action(detail=True, methods=['post'])
+
+    @action(detail=True, methods=["post"])
     def archive(self, request, pk=None):
         room = self.get_object()
         # Run our safety check before allowing archiving
         self._check_for_active_groups(room)
-        
+
         room.is_archived = True
         room.archived_at = timezone.now()
         room.save()
-        return Response({'status': 'Room archived'}, status=status.HTTP_200_OK)
+        return Response({"status": "Room archived"}, status=status.HTTP_200_OK)
 
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
         room = self.get_object()
         room.is_archived = False
         room.archived_at = None
         room.save()
-        return Response({'status': 'Room restored'}, status=status.HTTP_200_OK)
-    
+        return Response({"status": "Room restored"}, status=status.HTTP_200_OK)
+
 
 class DashboardStatsView(APIView):
     """
@@ -368,7 +378,7 @@ class StudentViewSet(viewsets.ModelViewSet):
                 balance=F("total_credits") - F("total_debits"),
             )
         )
-        
+
         user: User = self.request.user
         if not (user.is_ceo or user.is_admin or user.is_superuser):
             queryset = queryset.filter(group_memberships__group__teacher__id=user.pk)
@@ -455,10 +465,10 @@ class GroupViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         # Use the new detailed serializer for the 'retrieve' (detail) action
-        if self.action == 'retrieve':
+        if self.action == "retrieve":
             return GroupDetailSerializer
         return GroupSerializer
-    
+
     def get_queryset(self):
         # The existing queryset logic is fine
         queryset = Group.objects.select_related(
@@ -479,15 +489,15 @@ class GroupViewSet(viewsets.ModelViewSet):
         Overrides the default retrieve to use optimized queries for the detail page.
         """
         instance: Group = self.get_object()
-        
+
         instance = Group.objects.prefetch_related(
-            'students__student', # Prefetch StudentGroup, then the related Student
-            'price_history'
+            "students__student",  # Prefetch StudentGroup, then the related Student
+            "price_history",
         ).get(pk=instance.pk)
 
         serializer = self.get_serializer(instance)
         return Response(serializer.data)
-    
+
     def _check_for_conflicts(self, validated_data, instance=None):
         """
         A helper method containing the core conflict detection logic.
@@ -621,13 +631,13 @@ class GroupViewSet(viewsets.ModelViewSet):
         group.archived_at = None
         group.save()
         return Response({"status": "Group restored"}, status=status.HTTP_200_OK)
-    
+
     def _get_date_range_from_params(self, request):
         """Helper method to parse date range from request query parameters."""
-        year = request.query_params.get('year')
-        month = request.query_params.get('month')
-        start_date_str = request.query_params.get('start_date')
-        end_date_str = request.query_params.get('end_date')
+        year = request.query_params.get("year")
+        month = request.query_params.get("month")
+        start_date_str = request.query_params.get("start_date")
+        end_date_str = request.query_params.get("end_date")
         if year and month:
             try:
                 year, month = int(year), int(month)
@@ -646,9 +656,11 @@ class GroupViewSet(viewsets.ModelViewSet):
             except ValueError:
                 raise ValidationError("Sana noto'g'ri formatda (YYYY-MM-DD).")
         else:
-            raise ValidationError("Iltimos, 'year' va 'month' yoki 'start_date' va 'end_date' parametrlarini kiriting.")
-        
-    @action(detail=True, methods=['get'])
+            raise ValidationError(
+                "Iltimos, 'year' va 'month' yoki 'start_date' va 'end_date' parametrlarini kiriting."
+            )
+
+    @action(detail=True, methods=["get"])
     def lesson_schedule(self, request, pk=None):
         """
         Returns the regular and actual lesson days for the group within a given range.
@@ -659,18 +671,18 @@ class GroupViewSet(viewsets.ModelViewSet):
 
         regular_days = group.regular_lesson_days(start_range, end_range)
         actual_days = group.actual_lesson_days(start_range, end_range)
-        
+
         data = {
-            'group_id': group.id,
-            'group_name': group.name,
-            'checked_range': {'start': start_range, 'end': end_range},
-            'regular_lesson_dates': sorted(list(regular_days)),
-            'actual_lesson_dates': actual_days,
+            "group_id": group.id,
+            "group_name": group.name,
+            "checked_range": {"start": start_range, "end": end_range},
+            "regular_lesson_dates": sorted(list(regular_days)),
+            "actual_lesson_dates": actual_days,
         }
         return Response(data)
 
     # --- THIS IS THE SECOND NEW ACTION ---
-    @action(detail=True, methods=['get'])
+    @action(detail=True, methods=["get"])
     def schedule_details(self, request, pk=None):
         """
         Returns the holidays and schedule overrides that fall within a given range
@@ -678,22 +690,22 @@ class GroupViewSet(viewsets.ModelViewSet):
         """
         group: Group = self.get_object()
         start_range, end_range = self._get_date_range_from_params(request)
-        
+
         # Find holidays that fall on this group's regular schedule
         regular_days_in_range = group.regular_lesson_days(start_range, end_range)
         holidays = Holiday.objects.filter(date__in=regular_days_in_range)
-        
+
         # Find overrides that affect this group in the given range
         overrides = group.schedule_overrides.filter(
-            Q(original_date__range=(start_range, end_range)) | 
-            Q(new_date__range=(start_range, end_range))
+            Q(original_date__range=(start_range, end_range))
+            | Q(new_date__range=(start_range, end_range))
         )
-        
+
         data = {
-            'group_id': group.id,
-            'checked_range': {'start': start_range, 'end': end_range},
-            'holidays': HolidaySerializer(holidays, many=True).data,
-            'overrides': GroupScheduleOverrideSerializer(overrides, many=True).data,
+            "group_id": group.id,
+            "checked_range": {"start": start_range, "end": end_range},
+            "holidays": HolidaySerializer(holidays, many=True).data,
+            "overrides": GroupScheduleOverrideSerializer(overrides, many=True).data,
         }
         return Response(data)
 
@@ -709,19 +721,27 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
     queryset = StudentGroup.objects.all()
     filter_backends = [DjangoFilterBackend, SearchFilter]
     filterset_fields = ["student", "group"]
-    ordering_fields = ['student__full_name', 'joined_at', 'balance']
-    
+    ordering_fields = ["student__full_name", "joined_at", "balance"]
+
     def get_serializer_class(self):
-        if self.action == 'list':
+        if self.action == "list":
             return StudentGroupListSerializer
         # The enroll serializer is used for creating
         return StudentGroupEnrollSerializer
-    
+
     def get_queryset(self):
         # Annotate every enrollment with its calculated balance
-        queryset = StudentGroup.objects.select_related('student', 'group').annotate(
-            current_balance=Sum('transactions__amount', filter=Q(transactions__transaction_type='CREDIT'), default=0.0) -
-                    Sum('transactions__amount', filter=Q(transactions__transaction_type='DEBIT'), default=0.0)
+        queryset = StudentGroup.objects.select_related("student", "group").annotate(
+            current_balance=Sum(
+                "transactions__amount",
+                filter=Q(transactions__transaction_type="CREDIT"),
+                default=0.0,
+            )
+            - Sum(
+                "transactions__amount",
+                filter=Q(transactions__transaction_type="DEBIT"),
+                default=0.0,
+            )
         )
         is_archived = (
             self.request.query_params.get("is_archived", "false").lower() == "true"
@@ -738,34 +758,34 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
         self.check_object_permissions(self.request, obj)
         return obj
-    
-    @action(detail=True, methods=['patch'])
+
+    @action(detail=True, methods=["patch"])
     def archive(self, request, pk=None):
         """
         Soft-deletes (archives) a student's enrollment in a group.
         Expects a payload like: { "archived_at": "YYYY-MM-DD" }
         """
         enrollment: StudentGroup = self.get_object()
-        archive_date = request.data.get('archived_at')
+        archive_date = request.data.get("archived_at")
 
         # Basic validation
         if not archive_date:
             return Response(
                 {"detail": "Chiqarish sanasi kiritilishi shart."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         enrollment.is_archived = True
         # The 'archived_at' field name in your BaseModel is 'archived_time', let's correct this.
         # If your model uses 'archived_at', change the name here.
-        enrollment.archived_at = archive_date 
+        enrollment.archived_at = archive_date
         enrollment.save()
-        
+
         return Response(
-            {'status': f'{enrollment.student.full_name} guruhdan chiqarildi.'},
-            status=status.HTTP_200_OK
+            {"status": f"{enrollment.student.full_name} guruhdan chiqarildi."},
+            status=status.HTTP_200_OK,
         )
-        
+
     @action(detail=True, methods=["post"])
     def restore(self, request, pk=None):
         """
@@ -775,10 +795,10 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         enrollment.is_archived = False
         enrollment.archived_at = None
         enrollment.save()
-        
+
         return Response(
-            {'status': f'{enrollment.student.full_name} guruhga qayta qo\'shildi.'},
-            status=status.HTTP_200_OK
+            {"status": f"{enrollment.student.full_name} guruhga qayta qo'shildi."},
+            status=status.HTTP_200_OK,
         )
 
 
