@@ -28,6 +28,7 @@ import {
 } from "../data/dataTableStyles.jsx";
 
 import Avatar from "@mui/material/Avatar";
+import Checkbox from '@mui/material/Checkbox';
 import { stringAvatar } from "../components/ui/Avatar";
 
 // Import child components
@@ -304,14 +305,15 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       10
     )}-${p.slice(10, 12)}`;
   };
-  
+
   const formatCurrency = (num) =>
     new Intl.NumberFormat("fr-FR").format(num) + " so'm";
 
   const columns = [
-    { name: "№", selector: (row, i) => i + 1, width: "60px" },
+    { name: "№", selector: (row, i) => i + 1, width: "50px" },
     {
       name: "Rasm",
+      reorder: true,
       center: true,
       cell: (row) =>
         row.profile_photo ? (
@@ -323,10 +325,13 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     },
     {
       name: "Ism familiya",
+      reorder: true,
+      grow: true,
+      minWidth: "160px",
       selector: (row) => row.full_name,
       sortable: true,
       cell: (row) => (
-        <div className="font-medium truncate" style={{ minWidth: "180px" }}>
+        <div className="font-medium truncate">
           {row.full_name}
         </div>
       ),
@@ -334,12 +339,17 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     {
       name: "Telefon raqami",
       center: true,
+      reorder: true,
+      grow: true,
+      minWidth: "180px",
       selector: (row) => formatPhoneNumber(row.phone_number),
       sortable: true,
     },
     {
       name: "Balans",
-      width: "130px",
+      reorder: true,
+      grow: true,
+      minWidth: "120px",
       selector: (row) => row.balance,
       sortable: true,
       cell: (row) => (
@@ -357,11 +367,12 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     },
     {
       name: "Guruhlari",
-      width: "300px",
+      reorder: true,
+      minWidth: "200px",
       // --- FIX for 'grow' prop ---
       // We control the width and content in the cell renderer.
       cell: (row) => (
-        <div style={{ minWidth: "300px" }} className="w-full text-left">
+        <div className="w-full text-left">
           {row.groups.length > 0 ? (
             <div className="text-xs space-y-1">
               {row.groups.map((g) => (
@@ -381,11 +392,13 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
 
     {
       name: "Izoh",
+      minWidth: "100px",
+      reorder: true,
       selector: (row) => row.comment || "Izoh yo'q",
       // --- FIX for 'grow' prop ---
       // We control the width directly with inline styles on the cell's content.
       cell: (row) => (
-        <div className="truncate" style={{ minWidth: "100px" }}>
+        <div className="truncate">
           {row.comment || "Izoh yo'q"}
         </div>
       ),
@@ -509,7 +522,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
           data={students}
           progressPending={isLoading}
           responsive
-          expandableIcon
+          selectableRowsComponent={Checkbox}
           selectableRows
           selectableRowsHighlight
           highlightOnHover
