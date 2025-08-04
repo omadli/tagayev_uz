@@ -137,7 +137,7 @@ const PriceHistoryTab = ({
           <IconButton type="submit" color="primary" size="small">
             <Check />
           </IconButton>
-          <IconButton onClick={onCancel} size="small">
+          <IconButton onClick={onCancel} color="error" size="small">
             <X />
           </IconButton>
         </div>
@@ -167,12 +167,14 @@ const PriceHistoryTab = ({
                     {isManager && (
                       <div className="flex">
                         <IconButton
+                          color="info"
                           size="small"
                           onClick={() => setEditingId(p.id)}
                         >
                           <Edit size={16} />
                         </IconButton>
                         <IconButton
+                          color="error"
                           size="small"
                           onClick={() => handleDelete(p.id)}
                         >
