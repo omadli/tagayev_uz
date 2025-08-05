@@ -336,7 +336,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
             type="text"
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Qidirish..."
-            className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-lg"
+            className="w-full sm:w-64 pl-10 pr-4 py-2 border rounded-lg dark:bg-gray-700 text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         </div>
@@ -369,7 +369,6 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
         responsive
         pagination
         highlightOnHover
-        striped
         customStyles={theme === "dark" ? darkThemeStyles : customStyles}
         noDataComponent={<NoDataComponent />}
         progressComponent={<ProgressComponent />}
