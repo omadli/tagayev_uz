@@ -1,9 +1,10 @@
 # backend/core/views.py
 
-from datetime import date
 from calendar import monthrange
-from datetime import timedelta
 from django.utils import timezone
+from datetime import date, datetime, timedelta
+from django.db.models import Q, F
+from django.db import transaction
 from rest_framework.views import APIView
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -767,19 +768,28 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         Expects a payload like: { "archived_at": "YYYY-MM-DD" }
         """
         enrollment: StudentGroup = self.get_object()
-        archive_date = request.data.get("archived_at")
+        archive_date_str = request.data.get("archived_at")
 
         # Basic validation
-        if not archive_date:
+        if not archive_date_str:
             return Response(
                 {"detail": "Chiqarish sanasi kiritilishi shart."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        try:
+            archive_date = date.fromisoformat(archive_date_str)
+        except ValueError:
+            return Response({"detail": "Sana noto'g'ri formatda (YYYY-MM-DD)."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 2. Make the datetime object "aware" of the current timezone
+        #    We combine the date with the start of the day (00:00:00)
+        aware_datetime = timezone.make_aware(
+            datetime.combine(archive_date, datetime.min.time())
+        )
+
 
         enrollment.is_archived = True
-        # The 'archived_at' field name in your BaseModel is 'archived_time', let's correct this.
-        # If your model uses 'archived_at', change the name here.
-        enrollment.archived_at = archive_date
+        enrollment.archived_at = aware_datetime
         enrollment.save()
 
         return Response(
@@ -850,26 +860,36 @@ class GroupAttendanceView(APIView):
                 {"detail": "Invalid parameters"}, status=status.HTTP_400_BAD_REQUEST
             )
 
-        # 1. Get all actual lesson days for the month using our model method
-        start_range = date(year, month, 1)
-        end_range = date(year, month, monthrange(year, month)[1])
-        lesson_days = group.actual_lesson_days(start_range, end_range)
+        # 1. Define the date range for the requested month
+        start_of_month = date(year, month, 1)
+        end_of_month = date(year, month, monthrange(year, month)[1])
 
-        # 2. Get all active and archived student enrollments for this group
-        enrollments = group.students.select_related("student").all()
+        # 2. Get all actual lesson days for the month
+        lesson_days = group.actual_lesson_days(start_of_month, end_of_month)
 
-        # 3. Get all existing attendance records for these days
-        existing_attendance = Attendance.objects.filter(
-            student_group__in=enrollments, date__in=lesson_days
+       # 3. Get only the enrollments that were active during this month.
+        #    An enrollment is relevant if:
+        #    - Its join date is before the end of the month.
+        #    - Its leave date (archived_time) is either null OR after the start of the month.
+        relevant_enrollments = group.students.select_related('student').filter(
+            Q(joined_at__lte=end_of_month) & # They must have joined before or during this month
+            (Q(archived_at__isnull=True) | Q(archived_at__gte=start_of_month)) # and left after or during this month (or not left at all)
         )
 
-        # 4. Serialize the data into a structured format for the frontend
+        # 4. Get all existing attendance records for these days and relevant enrollments
+        existing_attendance = Attendance.objects.filter(
+            student_group__in=relevant_enrollments,
+            date__in=lesson_days
+        )
+
+        # 5. Serialize the data into a structured format for the frontend
         serialized_attendance = {}
         for att in existing_attendance:
             key = f"{att.student_group.id}_{att.date.isoformat()}"
             serialized_attendance[key] = {
                 "is_present": att.is_present,
                 "comment": att.comment,
+                "updated_at": att.updated_at,
             }
 
         response_data = {
@@ -878,9 +898,12 @@ class GroupAttendanceView(APIView):
                 {
                     "student_group_id": en.id,
                     "student_name": en.student.full_name,
+                    "student_phone_number": en.student.phone_number,
                     "is_archived": en.is_archived,
+                    "joined_at": en.joined_at,
+                    "archived_at": en.archived_at,
                 }
-                for en in enrollments
+                for en in relevant_enrollments
             ],
             "attendance_data": serialized_attendance,
         }
@@ -898,26 +921,48 @@ class GroupAttendanceView(APIView):
         is_present = data.get("is_present")
         comment = data.get("comment", "")
 
-        # Find the existing record, or prepare to create a new one
-        record, created = Attendance.objects.get_or_create(
-            student_group_id=student_group_id, date=attendance_date
-        )
-
-        # If is_present is null, it means "delete" (uncheck the box)
+        # 1. Basic validation for required fields
+        if not all([student_group_id, attendance_date]):
+            return Response({"detail": "student_group_id and date are required."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 2. Handle the DELETE case (un-marking an attendance)
         if is_present is None:
-            if not created:  # Only delete if it actually existed
-                record.delete()
+            Attendance.objects.filter(
+                student_group_id=student_group_id,
+                date=attendance_date
+            ).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
-        # Otherwise, update the record
-        record.is_present = is_present
-        # A comment is required for an absence
-        if is_present is False and not comment:
-            return Response(
-                {"comment": "Sababini kiritish majburiy."},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        record.comment = comment
-        record.save()
+        # 3. Validate the is_present field to ensure it's a boolean
+        if not isinstance(is_present, bool):
+            return Response({"is_present": "This field must be true or false."}, status=status.HTTP_400_BAD_REQUEST)
+         
+        try:
+            with transaction.atomic():
+                # If is_present is null, it means "delete".
+                if is_present is None:
+                    Attendance.objects.filter(
+                        student_group_id=student_group_id,
+                        date=attendance_date
+                    ).delete()
+                    return Response(status=status.HTTP_204_NO_CONTENT)
 
+                # Use update_or_create to handle both cases safely.
+                record, created = Attendance.objects.update_or_create(
+                    student_group_id=student_group_id,
+                    date=attendance_date,
+                    # The 'defaults' dict contains all the fields to be set or updated.
+                    defaults={
+                        'is_present': is_present,
+                        'comment': comment,
+                        # Automatically set the user who made the change
+                        # 'marked_by': request.user 
+                    }
+                )
+            
+            return Response(AttendanceSerializer(record).data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({"detail": "Server xatosi yuz berdi."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
         return Response(AttendanceSerializer(record).data, status=status.HTTP_200_OK)
