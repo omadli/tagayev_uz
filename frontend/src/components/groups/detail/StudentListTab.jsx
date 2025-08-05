@@ -50,11 +50,11 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
 
   // State for modals
   const [modalState, setModalState] = useState({
-        remove: null, // will hold enrollment object
-        payment: null, // will hold { student, group } objects
-        edit: null, // will hold enrollment object
-    });
-    
+    remove: null, // will hold enrollment object
+    payment: null, // will hold { student, group } objects
+    edit: null, // will hold enrollment object
+  });
+
   const [removeModal, setRemoveModal] = useState({
     isOpen: false,
     enrollment: null,
@@ -102,12 +102,11 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
     );
   }, [allEnrollments, searchQuery]);
 
-
   const handleRemove = (enrollment) =>
-    setModalState(prev => ({ ...prev, remove: enrollment }));
+    setModalState((prev) => ({ ...prev, remove: enrollment }));
 
   const handleEdit = (enrollment) => {
-    setModalState(prev => ({ ...prev, edit: enrollment }));
+    setModalState((prev) => ({ ...prev, edit: enrollment }));
   };
 
   const handleAddPayment = (enrollment) => {
@@ -116,7 +115,10 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       full_name: enrollment.student_full_name,
       phone_number: enrollment.student_phone_number,
     };
-    setModalState(prev => ({ ...prev, payment: { student: studentForModal, group: enrollment.id } }));
+    setModalState((prev) => ({
+      ...prev,
+      payment: { student: studentForModal, group: enrollment.id },
+    }));
   };
 
   const handleDelete = async (enrollment) => {
@@ -129,6 +131,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       try {
         await api.delete(`/core/enrollments/${enrollment.id}/`);
         toast.success("Muvaffaqiyatli o'chirildi", { id: toastId });
+        fetchAllEnrollments();
         refreshGroupDetails();
       } catch {
         toast.error("Xatolik yuz berdi", { id: toastId });
@@ -148,6 +151,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
         toast.success("Muvaffaqiyatli guruhga qayta qo'shildi", {
           id: toastId,
         });
+        fetchAllEnrollments();
         refreshGroupDetails();
       } catch {
         toast.error("Xatolik yuz berdi", { id: toastId });
@@ -216,6 +220,14 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
     return getActions(enrollment);
   }, [actionPopup.data]);
 
+  const formatPhoneNumber = (n) => {
+    const p = n.toString();
+    return `+${p.slice(0, 3)} (${p.slice(3, 5)}) ${p.slice(5, 8)}-${p.slice(
+      8,
+      10
+    )}-${p.slice(10, 12)}`;
+  };
+
   const columns = useMemo(() => {
     const baseColumns = [
       { name: "№", selector: (row, i) => i + 1, width: "60px" },
@@ -234,16 +246,29 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       },
       {
         name: "Ism familiya",
+        grow: true,
+        minWidth: "160px",
+        reorder: true,
         selector: (row) => row.student_full_name,
         sortable: true,
+        cell: (row) => (
+          <div className="font-medium truncate">{row.student_full_name}</div>
+        ),
       },
       {
         name: "Telefon raqam",
-        selector: (row) => `+${row.student_phone_number}`,
+        grow: true,
+        reorder: true,
+        minWidth: "180px",
+        selector: (row) => formatPhoneNumber(row.student_phone_number),
         sortable: true,
       },
       {
         name: "Balans",
+        center: true,
+        reorder: true,
+        grow: true,
+        minWidth: "150px",
         selector: (row) => row.current_balance,
         sortable: true,
         cell: (row) => (
@@ -262,6 +287,8 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       },
       {
         name: "Maxsus narx",
+        center: true,
+        reorder: true,
         selector: (row) =>
           row.price
             ? `${new Intl.NumberFormat("fr-FR").format(row.price)} so'm`
@@ -270,6 +297,8 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       },
       {
         name: "Qo'shilgan sana",
+        reorder: true,
+        center: true,
         selector: (row) => row.joined_at,
         sortable: true,
         format: (row) => dayjs(row.joined_at).format("DD/MM/YYYY"),
@@ -357,15 +386,18 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       />
 
       <RemoveFromGroupModal
-        isOpen={removeModal.isOpen}
-        onClose={() => setRemoveModal({ isOpen: false, enrollment: null })}
-        refreshData={refreshGroupDetails}
-        enrollment={removeModal.enrollment}
+        isOpen={modalState.remove}
+        onClose={() =>  setModalState((prev) => ({ ...prev, remove: null }))}
+        refreshData={() => {
+            fetchAllEnrollments();
+            refreshGroupDetails();
+          }}
+        enrollment={modalState.remove}
       />
       {modalState.payment && (
         <AddPaymentModal
           isOpen={!!modalState.payment}
-          onClose={() => setModalState(prev => ({...prev, payment: null}))}
+          onClose={() => setModalState((prev) => ({ ...prev, payment: null }))}
           initialStudent={{
             value: modalState.payment.student.id,
             label: `${modalState.payment.student.full_name} (+${modalState.payment.student.phone_number})`,
@@ -377,8 +409,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
       {modalState.edit && (
         <EditEnrollmentModal
           isOpen={!!modalState.edit}
-          onClose={() =>
-            setModalState(prev => ({...prev, edit: null}))}
+          onClose={() => setModalState((prev) => ({ ...prev, edit: null }))}
           refreshData={() => {
             fetchAllEnrollments();
             refreshGroupDetails();
