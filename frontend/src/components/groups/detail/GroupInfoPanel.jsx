@@ -78,6 +78,7 @@ const InfoRow = ({ icon: Icon, label, value, valueColor, ...props }) => (
 
 const GroupInfoPanel = ({
   group,
+  isTeacherView,
   onEdit,
   onDelete,
   onArchive,
@@ -227,10 +228,10 @@ const GroupInfoPanel = ({
   return (
     <div className="w-full lg:w-1/3 xl:w-1/4 lg:pr-6 flex-shrink-0 space-y-4">
       <Link
-        to="/groups"
+        to={isTeacherView ? "/mygroups" : "/groups"}
         className="inline-flex items-center text-sm text-blue-600 hover:underline mb-2"
       >
-        <ChevronLeft size={16} className="mr-1" /> Guruhlar ro'yxatiga qaytish
+        <ChevronLeft size={16} className="mr-1" /> {isTeacherView ? "Mening Guruhlarimga" : "Guruhlar ro'yxatiga"} qaytish
       </Link>
 
       {isMobile ? (

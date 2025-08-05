@@ -16,6 +16,7 @@ import GroupsPage from "./pages/GroupsPage";
 import MyGroupsPage from "./pages/MyGroupsPage";
 import RoomsPage from "./pages/RoomsPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
+import MyGroupDetailPage from "./pages/MyGroupDetailPage";
 
 // This component protects all routes that require a logged-in user
 const PrivateRoute = () => {
@@ -47,6 +48,7 @@ function App() {
           <Route element={<RoleBasedRoute allowedRoles={["Teacher"]} />}>
             <Route path="mygroups" element={<MyGroupsPage />} />
             <Route path="my-students" element={<MyStudentsPage />} />
+            <Route path="mygroups/:groupId" element={<MyGroupDetailPage />} />
           </Route>
 
           {/* --- Admin & CEO Only Routes --- */}

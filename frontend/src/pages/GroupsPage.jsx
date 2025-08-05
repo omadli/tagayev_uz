@@ -180,7 +180,7 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
 
   const handleView = (group) => {
     if(group && group.id){
-      navigate(`/groups/${group.id}`);
+      navigate(`/${ isTeacherMyGroupsPage ? 'mygroups': 'groups'}/${group.id}`);
     }
   }
     

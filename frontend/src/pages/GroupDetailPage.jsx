@@ -6,6 +6,7 @@ import { Tabs, Tab, Box, CircularProgress } from "@mui/material";
 import { ThemeProvider } from "@mui/material/styles";
 import { getMuiTheme } from "../theme/muiTheme";
 import { useSettings } from "../context/SettingsContext";
+import { useAuth } from "../context/AuthContext.jsx";
 
 // Import all child components
 import GroupInfoPanel from "../components/groups/detail/GroupInfoPanel";
@@ -19,7 +20,7 @@ import EditGroupModal from "../components/groups/EditGroupModal";
 import PriceChangeModal from "../components/groups/PriceChangeModal";
 import AddStudentToGroupModal from "../components/groups/AddStudentToGroupModal";
 
-const GroupDetailPage = () => {
+const GroupDetailPage = ({ isTeacherView = false }) => {
   // --- STATE MANAGEMENT ---
   const { groupId } = useParams();
   const navigate = useNavigate();
@@ -28,6 +29,11 @@ const GroupDetailPage = () => {
   const [group, setGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(0);
+  const { user: currentUser } = useAuth();
+  const isManager =
+    !isTeacherView ||
+    currentUser.roles.includes("Admin") ||
+    currentUser.roles.includes("CEO");
 
   // State for all modals
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -113,6 +119,7 @@ const GroupDetailPage = () => {
         {/* The left-side info panel */}
         <GroupInfoPanel
           group={group}
+          isTeacherView={isTeacherView}
           onEdit={handleEdit}
           onDelete={handleDelete}
           onArchive={handleArchive}
@@ -157,26 +164,30 @@ const GroupDetailPage = () => {
         </div>
       </div>
 
-      {/* All modals are rendered here, controlled by the page's state */}
-      <EditGroupModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        refreshGroups={fetchGroupDetails}
-        group={group}
-        selectedBranchId={selectedBranchId}
-      />
-      <PriceChangeModal
-        isOpen={isPriceModalOpen}
-        onClose={() => setIsPriceModalOpen(false)}
-        refreshGroups={fetchGroupDetails}
-        group={group}
-      />
-      <AddStudentToGroupModal
-        isOpen={isAddStudentModalOpen}
-        onClose={() => setIsAddStudentModalOpen(false)}
-        refreshGroups={fetchGroupDetails}
-        group={group}
-      />
+      {/* Modals are only rendered for the manager view */}
+      {isManager && (
+        <>
+          <EditGroupModal
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            refreshGroups={fetchGroupDetails}
+            group={group}
+            selectedBranchId={selectedBranchId}
+          />
+          <PriceChangeModal
+            isOpen={isPriceModalOpen}
+            onClose={() => setIsPriceModalOpen(false)}
+            refreshGroups={fetchGroupDetails}
+            group={group}
+          />
+          <AddStudentToGroupModal
+            isOpen={isAddStudentModalOpen}
+            onClose={() => setIsAddStudentModalOpen(false)}
+            refreshGroups={fetchGroupDetails}
+            group={group}
+          />
+        </>
+      )}
     </ThemeProvider>
   );
 };
