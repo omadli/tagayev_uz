@@ -3,8 +3,9 @@ from django.urls import path, include
 from .views import DashboardStatsView, GlobalSearchView, DailyAiStatsView
 
 from rest_framework.routers import DefaultRouter
-from .views import StudentEnrollmentListView
 from .views import (
+    StudentEnrollmentListView,
+    GroupAttendanceView,
     StudentViewSet,
     GroupViewSet,
     BranchViewSet,
@@ -28,6 +29,11 @@ urlpatterns = [
         "student-enrollments/",
         StudentEnrollmentListView.as_view(),
         name="student-enrollments",
+    ),
+    path(
+        "groups/<int:group_id>/attendance/",
+        GroupAttendanceView.as_view(),
+        name="group-attendance",
     ),
     path("", include(router.urls)),
 ]

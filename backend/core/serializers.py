@@ -6,6 +6,7 @@ from .models import (
     Group,
     Student,
     StudentGroup,
+    Attendance,
     Room,
     Parent,
     Holiday,
@@ -556,4 +557,33 @@ class StudentGroupListSerializer(serializers.ModelSerializer):
             "current_balance",
             "is_archived",
             "archived_at",
+        ]
+
+
+class AttendanceSerializer(serializers.ModelSerializer):
+    """
+    Serializer for listing, creating, and updating Attendance records.
+    """
+
+    # We will send the StudentGroup ID and date to create/find the record
+    student_group = serializers.PrimaryKeyRelatedField(
+        queryset=StudentGroup.objects.all()
+    )
+
+    class Meta:
+        model = Attendance
+        fields = [
+            "id",
+            "student_group",
+            "date",
+            "is_present",
+            "comment",
+        ]
+        # Make the student_group and date unique together for a given record
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=Attendance.objects.all(),
+                fields=("student_group", "date"),
+                message="Bu o'quvchi uchun bu sanada davomat allaqachon mavjud.",
+            )
         ]

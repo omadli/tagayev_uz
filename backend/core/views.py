@@ -42,6 +42,7 @@ from .serializers import (
     GroupScheduleOverrideSerializer,
     GroupDetailSerializer,
     StudentGroupListSerializer,
+    AttendanceSerializer,
 )
 
 
@@ -826,3 +827,97 @@ class StudentEnrollmentListView(generics.ListAPIView):
             group__is_archived=False,
             group__end_date__gte=today,
         ).select_related("group__teacher")
+
+
+class GroupAttendanceView(APIView):
+    """
+    A custom view to get and set attendance for a specific group for a given month.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, group_id, *args, **kwargs):
+        """
+        GET /api/core/groups/5/attendance/?year=2025&month=8
+        Returns all lesson days and existing attendance records for a group in a given month.
+        """
+        try:
+            group = Group.objects.get(pk=group_id)
+            year = int(request.query_params.get("year"))
+            month = int(request.query_params.get("month"))
+        except (Group.DoesNotExist, ValueError, TypeError):
+            return Response(
+                {"detail": "Invalid parameters"}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 1. Get all actual lesson days for the month using our model method
+        start_range = date(year, month, 1)
+        end_range = date(year, month, monthrange(year, month)[1])
+        lesson_days = group.actual_lesson_days(start_range, end_range)
+
+        # 2. Get all active and archived student enrollments for this group
+        enrollments = group.students.select_related("student").all()
+
+        # 3. Get all existing attendance records for these days
+        existing_attendance = Attendance.objects.filter(
+            student_group__in=enrollments, date__in=lesson_days
+        )
+
+        # 4. Serialize the data into a structured format for the frontend
+        serialized_attendance = {}
+        for att in existing_attendance:
+            key = f"{att.student_group.id}_{att.date.isoformat()}"
+            serialized_attendance[key] = {
+                "is_present": att.is_present,
+                "comment": att.comment,
+            }
+
+        response_data = {
+            "lesson_days": lesson_days,
+            "enrollments": [
+                {
+                    "student_group_id": en.id,
+                    "student_name": en.student.full_name,
+                    "is_archived": en.is_archived,
+                }
+                for en in enrollments
+            ],
+            "attendance_data": serialized_attendance,
+        }
+        return Response(response_data)
+
+    def post(self, request, group_id, *args, **kwargs):
+        """
+        POST /api/core/groups/5/attendance/
+        Creates, updates, or deletes an attendance record.
+        Payload: { student_group_id: 123, date: "YYYY-MM-DD", is_present: true/false/null, comment: "..." }
+        """
+        data = request.data
+        student_group_id = data.get("student_group_id")
+        attendance_date = data.get("date")
+        is_present = data.get("is_present")
+        comment = data.get("comment", "")
+
+        # Find the existing record, or prepare to create a new one
+        record, created = Attendance.objects.get_or_create(
+            student_group_id=student_group_id, date=attendance_date
+        )
+
+        # If is_present is null, it means "delete" (uncheck the box)
+        if is_present is None:
+            if not created:  # Only delete if it actually existed
+                record.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # Otherwise, update the record
+        record.is_present = is_present
+        # A comment is required for an absence
+        if is_present is False and not comment:
+            return Response(
+                {"comment": "Sababini kiritish majburiy."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        record.comment = comment
+        record.save()
+
+        return Response(AttendanceSerializer(record).data, status=status.HTTP_200_OK)
