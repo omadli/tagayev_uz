@@ -486,7 +486,7 @@ const AttendanceTab = ({ group }) => {
             </table>
           </div>
         )}
-        <div className="pt-4 flex justify-end">
+        <div className="pt-4 flex justify-start">
           <button
             onClick={() => setShowArchived(!showArchived)}
             className="text-red-500 text-sm font-medium hover:underline"
