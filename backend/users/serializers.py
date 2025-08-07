@@ -186,6 +186,23 @@ class TeacherPageSerializer(serializers.ModelSerializer):
         validated_data["is_active"] = True
         user: User = User.objects.create_user(**validated_data)
         return user
+    
+    def update(self, instance, validated_data):
+        """
+        Handles updates. If a new password is provided, it will be hashed.
+        Otherwise, the password remains unchanged.
+        """
+        # If 'password' is in the data, it needs special handling.
+        password = validated_data.pop("password", None)
+
+        # Use the default update method for all other fields.
+        user = super().update(instance, validated_data)
+
+        if password:
+            user.set_password(password)
+            user.save()
+
+        return user
 
     def validate(self, data):
         """
