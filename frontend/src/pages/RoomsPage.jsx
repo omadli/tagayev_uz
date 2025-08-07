@@ -15,7 +15,7 @@ import {
   paginationComponentOptions,
 } from "../data/dataTableStyles.jsx";
 import ActionPopup from "../components/ui/ActionPopup";
-import RoomModal from "../components/rooms/RoomModal"; // Import the new modal
+import RoomModal from "../components/rooms/RoomModal";
 
 const RoomsPage = () => {
   const { theme, selectedBranchId } = useSettings();
@@ -25,9 +25,8 @@ const RoomsPage = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // State for the modal (Add/Edit) and popup
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedRoom, setSelectedRoom] = useState(null); // Used for editing
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [actionPopup, setActionPopup] = useState({
     isOpen: false,
     data: null,
@@ -35,13 +34,12 @@ const RoomsPage = () => {
   });
 
   const fetchRooms = useCallback(async () => {
-    if (!selectedBranchId) return; // Don't fetch if no branch is selected
+    if (!selectedBranchId) return;
     setIsLoading(true);
     try {
       const params = {
         is_archived: showArchived,
         branch: selectedBranchId,
-        search: searchQuery,
       };
       const response = await api.get("/core/rooms/", { params });
       setRooms(response.data.results || response.data);
@@ -50,12 +48,25 @@ const RoomsPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showArchived, selectedBranchId, searchQuery]);
+  }, [showArchived, selectedBranchId]);
 
   useEffect(() => {
     const handler = setTimeout(() => fetchRooms(), 300);
     return () => clearTimeout(handler);
   }, [fetchRooms]);
+
+  const filteredRooms = useMemo(() => {
+    if (!searchQuery) {
+      return rooms;
+    }
+
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    return rooms.filter(
+      (room) =>
+        room.name.toLowerCase().includes(lowerCaseQuery) ||
+        room.extra_info.toString().includes(lowerCaseQuery)
+    );
+  }, [rooms, searchQuery]);
 
   const handleAdd = () => {
     setSelectedRoom(null);
@@ -123,7 +134,12 @@ const RoomsPage = () => {
 
   const columns = [
     { name: "№", selector: (row, i) => i + 1, width: "60px" },
-    { name: "Xona", selector: (row) => row.name, sortable: true },
+    {
+      name: "Xona",
+      selector: (row) => row.name,
+      sortable: true,
+      cell: (row) => <div className="font-medium truncate">{row.name}</div>,
+    },
     {
       name: "Sig'imi",
       selector: (row) => `${row.capacity} ta`,
@@ -199,7 +215,7 @@ const RoomsPage = () => {
       <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
         <DataTable
           columns={columns}
-          data={rooms}
+          data={filteredRooms}
           progressPending={isLoading}
           pagination
           paginationRowsPerPageOptions={[10, 30, 50, 100]}
