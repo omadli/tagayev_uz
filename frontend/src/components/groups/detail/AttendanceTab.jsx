@@ -392,7 +392,7 @@ const AttendanceTab = ({ group }) => {
 
   return (
     <ThemeProvider theme={muiTheme}>
-      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-sm p-4 space-y-4">
+      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-sm p-4 space-y-3">
         <div className="flex items-center justify-between border-b dark:border-dark-tertiary pb-3">
           <IconButton
             onClick={handlePrevMonth}
@@ -419,15 +419,15 @@ const AttendanceTab = ({ group }) => {
         {isLoading ? (
           <CircularProgress className="mx-auto block my-8" />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[60vh] relative">
             <table className="min-w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr className="text-gray-500 dark:text-text-light-secondary">
-                  <th className="sticky left-0 p-3 text-left w-48 bg-white dark:bg-dark-secondary z-10 font-medium">
+                <tr className="text-gray-800 dark:text-text-light-secondary sticky top-0 z-20 bg-white dark:bg-dark-secondary">
+                  <th className="sticky top-0 left-0 p-3 text-left w-48 bg-white dark:bg-dark-secondary z-30 text-lg border-b dark:border-dark-tertiary">
                     O'quvchilar
                   </th>
                   {data.lesson_days.map((day) => (
-                    <th key={day} className="p-3 text-center font-bold text-gray-800 dark:text-text-light-primary">
+                    <th key={day} className="p-3 text-center font-bold text-gray-800 dark:text-text-light-primary border-b dark:border-dark-tertiary">
                       <Tooltip
                         title={`${dayjs(day).format("D-MMMM")}`}
                         placement="right"
@@ -440,7 +440,7 @@ const AttendanceTab = ({ group }) => {
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-100 dark:divide-dark-tertiary">
                 {visibleEnrollments.map((enrollment) => (
                   <tr
                     key={enrollment.student_group_id}
@@ -448,7 +448,7 @@ const AttendanceTab = ({ group }) => {
                   >
                     <td
                       className={clsx(
-                        "sticky left-0 p-3 font-medium z-10",
+                        "sticky left-0 p-3 font-medium bg-white dark:bg-dark-secondary z-10",
                         enrollment.is_archived
                           ? "bg-gray-100 dark:bg-dark-tertiary"
                           : "bg-white dark:bg-dark-secondary"
@@ -475,7 +475,7 @@ const AttendanceTab = ({ group }) => {
                     {data.lesson_days.map((day) => (
                       <td
                         key={day}
-                        className="p-0 text-center h-14 w-14 border-l dark:border-dark-tertiary"
+                        className="p-0 text-center h-12 w-14 border-l dark:border-dark-tertiary"
                       >
                         {renderCell(enrollment, day)}
                       </td>
