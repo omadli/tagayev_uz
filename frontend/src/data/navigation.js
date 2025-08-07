@@ -49,10 +49,10 @@ export const navLinks = [
           {
             name: "Fliallar",
             icon: FaSitemap,
-            path: "/settings/office/branches",
+            path: "/settings/main/branches",
           },
-          { name: "Xonalar", icon: DoorOpen, path: "/settings/office/rooms" },
-          { name: "To'lov turlari", icon: FaWallet, path: "/settings/office/payment-types" },
+          { name: "Xonalar", icon: DoorOpen, path: "/settings/main/rooms" },
+          { name: "To'lov turlari", icon: FaWallet, path: "/settings/main/payment-types" },
         ],
       },
       { name: "CEO", icon: FaUsersCog, path: "/settings/ceo" },

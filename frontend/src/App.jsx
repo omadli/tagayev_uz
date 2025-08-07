@@ -15,6 +15,8 @@ import StaffPage from "./pages/StaffPage"; // Assuming this page also exists as 
 import GroupsPage from "./pages/GroupsPage";
 import MyGroupsPage from "./pages/MyGroupsPage";
 import RoomsPage from "./pages/RoomsPage";
+import BranchesPage from "./pages/BranchesPage";
+import PaymentTypesPage from "./pages/PaymentTypesPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
 import MyGroupDetailPage from "./pages/MyGroupDetailPage";
 
@@ -63,7 +65,9 @@ function App() {
           {/* --- CEO Only Routes --- */}
           <Route element={<RoleBasedRoute allowedRoles={["CEO"]} />}>
             <Route path="staff" element={<StaffPage />} />
-            <Route path="settings/office/rooms" element={<RoomsPage />} />
+            <Route path="settings/main/rooms" element={<RoomsPage />} />
+            <Route path="settings/main/branches" element={<BranchesPage />} />
+            <Route path="settings/main/payment-types" element={<PaymentTypesPage />} />
             {/* Add other CEO-only settings pages here */}
           </Route>
         </Route>

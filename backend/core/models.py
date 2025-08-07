@@ -143,6 +143,7 @@ class Group(BaseModel):
     branch = models.ForeignKey(
         Branch,
         on_delete=models.CASCADE,
+        related_name="groups",
         help_text="Branch where the group is taught",
     )
 

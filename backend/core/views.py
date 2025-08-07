@@ -56,11 +56,82 @@ class BranchViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrAdminForUnsafe]
 
     def get_queryset(self):
-        queryset = Branch.objects.all()
+        today = timezone.now().date()
+        queryset = Branch.objects.annotate(
+            active_groups_count=Count(
+                "groups",
+                filter=Q(groups__is_archived=False, groups__end_date__gte=today),
+                distinct=True,
+            ),
+            active_students_count=Count(
+                "students", filter=Q(students__is_archived=False), distinct=True
+            ),
+        )
         is_archived = (
             self.request.query_params.get("is_archived", "false").lower() == "true"
         )
         return queryset.filter(is_archived=is_archived).order_by("created_at")
+
+    def _check_for_dependencies(self, branch, check_active_only=False):
+        """
+        Helper method to check for related students or groups.
+        If 'check_active_only' is True, it only looks for active groups.
+        """
+        students_exist = Student.objects.filter(branch=branch).exists()
+
+        groups_query = Group.objects.filter(branch=branch)
+        if check_active_only:
+            groups_query = groups_query.filter(
+                is_archived=False, end_date__gte=timezone.now().date()
+            )
+
+        groups_exist = groups_query.exists()
+
+        if students_exist or groups_exist:
+            error_message = "Bu filialni o'chirib bo'lmaydi, chunki unga bog'langan "
+            dependencies = []
+            if students_exist:
+                dependencies.append("o'quvchilar")
+            if groups_exist:
+                dependencies.append(f"{'faol ' if check_active_only else ''}guruhlar")
+            error_message += " va ".join(dependencies) + " mavjud."
+            raise ValidationError(error_message)
+
+        count_branches = Branch.objects.filter(is_archived=False).count()
+        if count_branches == 1:
+            raise ValidationError(
+                "Ushbu filialni o'chirib bo'lmaydi. Kamida 1 ta aktiv filial qolishi kerak"
+            )
+
+    def perform_destroy(self, instance):
+        # On hard delete, check for ANY related objects
+        self._check_for_dependencies(instance, check_active_only=False)
+        instance.delete()
+
+    def get_object(self):
+        queryset = Branch.objects.all()
+        obj = generics.get_object_or_404(queryset, pk=self.kwargs["pk"])
+        self.check_object_permissions(self.request, obj)
+        return obj
+
+    @action(detail=True, methods=["post"])
+    def archive(self, request, pk=None):
+        branch = self.get_object()
+        # On archive, only check for ACTIVE groups/students
+        self._check_for_dependencies(branch, check_active_only=True)
+
+        branch.is_archived = True
+        branch.archived_at = timezone.now()
+        branch.save()
+        return Response({"status": "Branch archived"}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        branch = self.get_object()
+        branch.is_archived = False
+        branch.archived_at = None
+        branch.save()
+        return Response({"status": "Branch restored"}, status=status.HTTP_200_OK)
 
 
 class RoomViewSet(viewsets.ModelViewSet):
@@ -779,14 +850,16 @@ class StudentGroupViewSet(viewsets.ModelViewSet):
         try:
             archive_date = date.fromisoformat(archive_date_str)
         except ValueError:
-            return Response({"detail": "Sana noto'g'ri formatda (YYYY-MM-DD)."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {"detail": "Sana noto'g'ri formatda (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # 2. Make the datetime object "aware" of the current timezone
         #    We combine the date with the start of the day (00:00:00)
         aware_datetime = timezone.make_aware(
             datetime.combine(archive_date, datetime.min.time())
         )
-
 
         enrollment.is_archived = True
         enrollment.archived_at = aware_datetime
@@ -867,19 +940,22 @@ class GroupAttendanceView(APIView):
         # 2. Get all actual lesson days for the month
         lesson_days = group.actual_lesson_days(start_of_month, end_of_month)
 
-       # 3. Get only the enrollments that were active during this month.
+        # 3. Get only the enrollments that were active during this month.
         #    An enrollment is relevant if:
         #    - Its join date is before the end of the month.
         #    - Its leave date (archived_time) is either null OR after the start of the month.
-        relevant_enrollments = group.students.select_related('student').filter(
-            Q(joined_at__lte=end_of_month) & # They must have joined before or during this month
-            (Q(archived_at__isnull=True) | Q(archived_at__gte=start_of_month)) # and left after or during this month (or not left at all)
+        relevant_enrollments = group.students.select_related("student").filter(
+            Q(
+                joined_at__lte=end_of_month
+            )  # They must have joined before or during this month
+            & (
+                Q(archived_at__isnull=True) | Q(archived_at__gte=start_of_month)
+            )  # and left after or during this month (or not left at all)
         )
 
         # 4. Get all existing attendance records for these days and relevant enrollments
         existing_attendance = Attendance.objects.filter(
-            student_group__in=relevant_enrollments,
-            date__in=lesson_days
+            student_group__in=relevant_enrollments, date__in=lesson_days
         )
 
         # 5. Serialize the data into a structured format for the frontend
@@ -923,27 +999,31 @@ class GroupAttendanceView(APIView):
 
         # 1. Basic validation for required fields
         if not all([student_group_id, attendance_date]):
-            return Response({"detail": "student_group_id and date are required."}, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response(
+                {"detail": "student_group_id and date are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # 2. Handle the DELETE case (un-marking an attendance)
         if is_present is None:
             Attendance.objects.filter(
-                student_group_id=student_group_id,
-                date=attendance_date
+                student_group_id=student_group_id, date=attendance_date
             ).delete()
             return Response(status=status.HTTP_204_NO_CONTENT)
 
         # 3. Validate the is_present field to ensure it's a boolean
         if not isinstance(is_present, bool):
-            return Response({"is_present": "This field must be true or false."}, status=status.HTTP_400_BAD_REQUEST)
-         
+            return Response(
+                {"is_present": "This field must be true or false."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         try:
             with transaction.atomic():
                 # If is_present is null, it means "delete".
                 if is_present is None:
                     Attendance.objects.filter(
-                        student_group_id=student_group_id,
-                        date=attendance_date
+                        student_group_id=student_group_id, date=attendance_date
                     ).delete()
                     return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -953,16 +1033,22 @@ class GroupAttendanceView(APIView):
                     date=attendance_date,
                     # The 'defaults' dict contains all the fields to be set or updated.
                     defaults={
-                        'is_present': is_present,
-                        'comment': comment,
+                        "is_present": is_present,
+                        "comment": comment,
                         # Automatically set the user who made the change
-                        # 'marked_by': request.user 
-                    }
+                        # 'marked_by': request.user
+                    },
                 )
-            
-            return Response(AttendanceSerializer(record).data, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
+
+            return Response(
+                AttendanceSerializer(record).data,
+                status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED,
+            )
 
         except Exception as e:
-            return Response({"detail": "Server xatosi yuz berdi."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
+            return Response(
+                {"detail": "Server xatosi yuz berdi."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         return Response(AttendanceSerializer(record).data, status=status.HTTP_200_OK)

@@ -18,9 +18,25 @@ from dateutil.relativedelta import relativedelta
 
 
 class BranchSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Branch model.
+    Includes calculated counts for active groups and students.
+    """
+
+    active_groups_count = serializers.IntegerField(read_only=True)
+    active_students_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Branch
-        fields = ["id", "name", "address", "extra_info"]
+        fields = [
+            "id",
+            "name",
+            "address",
+            "extra_info",
+            "is_archived",
+            "active_groups_count",
+            "active_students_count",
+        ]
 
 
 class RoomSerializer(serializers.ModelSerializer):

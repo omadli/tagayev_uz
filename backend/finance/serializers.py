@@ -69,9 +69,17 @@ class PaymentTypeSerializer(serializers.ModelSerializer):
     Serializer for the PaymentType model.
     """
 
+    # These are read-only fields populated by the ViewSet annotation
+    current_month_total = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True
+    )
+    last_month_total = serializers.DecimalField(
+        max_digits=14, decimal_places=2, read_only=True
+    )
+
     class Meta:
         model = PaymentType
-        fields = ["id", "name", "is_active"]
+        fields = ["id", "name", "is_active", "current_month_total", "last_month_total"]
 
 
 class PaymentCreateSerializer(serializers.ModelSerializer):
