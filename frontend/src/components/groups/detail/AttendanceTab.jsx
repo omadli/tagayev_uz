@@ -18,7 +18,7 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { Check, X, Lock, Square, Minus, MessageSquareText } from "lucide-react";
+import { Check, X, Lock, Square, Minus, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react";
 import dayjs from "dayjs";
 import clsx from "clsx";
 import "dayjs/locale/uz-latn"; // Ensure Uzbek locale is loaded
@@ -344,18 +344,39 @@ const AttendanceTab = ({ group }) => {
     );
   };
 
-  // Generate the list of months for the tabs
-  const monthTabs = [];
-  let monthIterator = dayjs(group.start_date).startOf("month");
-  const end = dayjs(group.end_date).startOf("month");
+  const allMonths = useMemo(() => {
+    const months = [];
+    let monthIterator = dayjs(group.start_date).startOf("month");
+    const end = dayjs(group.end_date).endOf("month");
 
-  while (monthIterator.isSame(end) || monthIterator.isBefore(end)) {
-    monthTabs.push({
-      year: monthIterator.year(),
-      month: monthIterator.month(), // 0-based: 0 = Jan, 11 = Dec
-    });
-    monthIterator = monthIterator.add(1, "month");
-  }
+    while (monthIterator.isSame(end) || monthIterator.isBefore(end)) {
+      months.push({ year: monthIterator.year(), month: monthIterator.month() });
+      monthIterator = monthIterator.add(1, "month");
+    }
+    return months;
+  }, [group.start_date, group.end_date]);
+
+  const handlePrevMonth = () => {
+    const newDate = dayjs()
+      .year(view.year)
+      .month(view.month)
+      .subtract(1, "month");
+    setView({ year: newDate.year(), month: newDate.month() });
+  };
+
+  const handleNextMonth = () => {
+    const newDate = dayjs().year(view.year).month(view.month).add(1, "month");
+    setView({ year: newDate.year(), month: newDate.month() });
+  };
+
+  // 3. Determine if the nav buttons should be disabled
+  const isFirstMonth =
+    view.year === dayjs(group.start_date).year() &&
+    view.month === dayjs(group.start_date).month();
+
+  const isLastMonth =
+    view.year === dayjs(group.end_date).year() &&
+    view.month === dayjs(group.end_date).month();
 
   const visibleEnrollments = useMemo(() => {
     return data.enrollments.filter((e) => !e.is_archived || showArchived);
@@ -372,51 +393,41 @@ const AttendanceTab = ({ group }) => {
   return (
     <ThemeProvider theme={muiTheme}>
       <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-sm p-4 space-y-4">
-        <Box
-          sx={{
-            borderBottom: 1,
-            borderColor: "divider",
-            maxWidth: { xs: 320, sm: 480, lg: 1280 },
-          }}
-        >
-          <Tabs
-            value={`${view.year}-${view.month}`}
-            onChange={(e, val) => {
-              const [yearStr, monthStr] = val.split("-");
-              setView({
-                year: Number(yearStr),
-                month: Number(monthStr),
-              });
-            }}
-            variant="scrollable"
-            scrollButtons="auto"
-            allowScrollButtonsMobile
+        <div className="flex items-center justify-between border-b dark:border-dark-tertiary pb-3">
+          <IconButton
+            onClick={handlePrevMonth}
+            disabled={isFirstMonth}
+            size="small"
           >
-            {monthTabs.map((tab) => (
-              <Tab
-                key={`${tab.year}-${tab.month}`}
-                label={dayjs()
-                  .year(tab.year)
-                  .month(tab.month)
-                  .locale("uz-latn")
-                  .format("MMMM YYYY")}
-                value={`${tab.year}-${tab.month}`}
-              />
-            ))}
-          </Tabs>
-        </Box>
+            <ChevronLeft />
+          </IconButton>
+          <div className="font-semibold text-lg text-gray-800 dark:text-text-light-primary">
+            {dayjs()
+              .year(view.year)
+              .month(view.month)
+              .locale("uz-latn")
+              .format("MMMM YYYY")}
+          </div>
+          <IconButton
+            onClick={handleNextMonth}
+            disabled={isLastMonth}
+            size="small"
+          >
+            <ChevronRight />
+          </IconButton>
+        </div>
         {isLoading ? (
-          <CircularProgress />
+          <CircularProgress className="mx-auto block my-8" />
         ) : (
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="min-w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr className="bg-gray-50 dark:bg-dark-tertiary">
-                  <th className="sticky left-0 p-3 text-left w-48 bg-gray-50 dark:bg-dark-tertiary z-10">
+                <tr className="text-gray-500 dark:text-text-light-secondary">
+                  <th className="sticky left-0 p-3 text-left w-48 bg-white dark:bg-dark-secondary z-10 font-medium">
                     O'quvchilar
                   </th>
                   {data.lesson_days.map((day) => (
-                    <th key={day} className="p-3 text-center">
+                    <th key={day} className="p-3 text-center font-bold text-gray-800 dark:text-text-light-primary">
                       <Tooltip
                         title={`${dayjs(day).format("D-MMMM")}`}
                         placement="right"
@@ -435,7 +446,14 @@ const AttendanceTab = ({ group }) => {
                     key={enrollment.student_group_id}
                     className="border-b dark:border-dark-tertiary"
                   >
-                    <td className="sticky left-0 p-3 font-medium bg-white dark:bg-dark-secondary z-10">
+                    <td
+                      className={clsx(
+                        "sticky left-0 p-3 font-medium z-10",
+                        enrollment.is_archived
+                          ? "bg-gray-100 dark:bg-dark-tertiary"
+                          : "bg-white dark:bg-dark-secondary"
+                      )}
+                    >
                       <Tooltip
                         title={`${enrollment.student_name} ${formatPhoneNumber(
                           enrollment.student_phone_number
