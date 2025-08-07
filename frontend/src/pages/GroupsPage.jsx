@@ -261,7 +261,7 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
         selector: (row) => row.name,
         sortable: true,
         cell: (row) => (
-          <div className="flex items-center space-x-3 py-2">
+          <div className="flex items-center space-x-3 py-2" onClick={() => handleView(row)}>
             <span
               style={{ backgroundColor: row.color }}
               className="w-4 h-4 rounded-full flex-shrink-0 border border-gray-300 dark:border-gray-600"
