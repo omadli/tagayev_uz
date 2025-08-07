@@ -13,6 +13,7 @@ import BranchChanger from "./BranchChanger";
 const DashboardHeader = ({
   toggleMobileSidebar,
   onProfileSettingsClick,
+  onSiteSettingsClick,
   onAddPaymentClick,
 }) => {
   // Get all necessary state and props
@@ -94,7 +95,7 @@ const DashboardHeader = ({
             >
               <FiBell size={20} />
             </button>
-            <ProfileDropdown onSettingsClick={onProfileSettingsClick} />
+            <ProfileDropdown onSettingsClick={onProfileSettingsClick} onSiteSettingsClick={onSiteSettingsClick} />
           </div>
         </div>
         <div className="px-4 pb-4">
@@ -121,7 +122,10 @@ const DashboardHeader = ({
           <button className="text-gray-500 relative" aria-label="Notifications">
             <FiBell size={22} />
           </button>
-          <ProfileDropdown onSettingsClick={onProfileSettingsClick} />
+          <ProfileDropdown
+            onSettingsClick={onProfileSettingsClick}
+            onSiteSettingsClick={onSiteSettingsClick}
+          />
         </div>
       </div>
     </header>

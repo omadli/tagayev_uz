@@ -87,6 +87,7 @@ const DashboardLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <DashboardHeader
           onProfileSettingsClick={() => setIsProfileSettingsOpen(true)}
+          onSiteSettingsClick={() => setIsSettingsOpen(true)}
           toggleMobileSidebar={toggleMobileSidebar}
           onAddPaymentClick={() => setIsPaymentModalOpen(true)}
         />
@@ -117,7 +118,7 @@ const DashboardLayout = () => {
       {isManager && (
       <DraggableAiButton onClick={() => setIsAiBotOpen(true)} />
       )}
-      <div className="fixed bottom-6 right-6 z-20">
+      <div className="fixed bottom-6 right-6 z-20 hidden lg:block">
         <button
           onClick={() => setIsSettingsOpen(true)}
           className="bg-purple-600 text-white p-4 rounded-full shadow-lg hover:bg-purple-700 transition"

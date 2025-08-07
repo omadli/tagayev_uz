@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import useWindowSize from "../../hooks/useWindowSize";
 import { FiLogOut, FiSettings, FiVideo, FiUser } from "react-icons/fi";
 import { QrCodeIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { StyledBadge, stringAvatar } from "../ui/Avatar";
 import { Avatar } from "@mui/material";
 
-const ProfileDropdown = ({ onSettingsClick }) => {
+const ProfileDropdown = ({ onSettingsClick, onSiteSettingsClick }) => {
   // ... (keep the existing state and useEffect hooks)
   const { user, logoutUser } = useAuth();
+  const { width } = useWindowSize(); // Get window width
+  const isMobile = width < 1024;
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -54,9 +57,16 @@ const ProfileDropdown = ({ onSettingsClick }) => {
           <div className="p-4 border-b dark:border-gray-700 flex items-start justify-between">
             <div className="flex items-start space-x-3">
               {user.profile_photo ? (
-                <Avatar alt={user.full_name} src={user.profile_photo} sx={{ width: 56, height: 56 }} />
+                <Avatar
+                  alt={user.full_name}
+                  src={user.profile_photo}
+                  sx={{ width: 56, height: 56 }}
+                />
               ) : (
-                <Avatar {...stringAvatar(user.full_name)} sx={{ width: 56, height: 56 }} />
+                <Avatar
+                  {...stringAvatar(user.full_name)}
+                  sx={{ width: 56, height: 56 }}
+                />
               )}
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white">
@@ -84,6 +94,14 @@ const ProfileDropdown = ({ onSettingsClick }) => {
             >
               <FiSettings className="mr-3" /> Profile Sozlamalari
             </button>
+            {isMobile && (
+              <button
+                onClick={onSiteSettingsClick}
+                className="flex items-center w-full px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+              >
+                <FiSettings className="mr-3" /> Sayt Sozlamalari
+              </button>
+            )}
             <button
               onClick={logoutUser}
               className="w-full text-left flex items-center px-3 py-2 text-sm text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-gray-700 rounded-md"
