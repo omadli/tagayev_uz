@@ -60,12 +60,11 @@ class Transaction(models.Model):
 
     class TransactionCategory(models.TextChoices):
         MONTHLY_FEE = "MONTHLY_FEE", "Oylik to'lov"
-        INITIAL_FEE = "INITIAL_FEE", "Boshlang'ich to'lov"
-        BOOK_FEE = "BOOK_FEE", "Kitob uchun"
         PAYMENT = "PAYMENT", "To'lov"
         DISCOUNT = "DISCOUNT", "Chegirma"
         BONUS = "BONUS", "Bonus"
         REFUND = "REFUND", "Pulni qaytarish"
+        OTHER_FEE = "OTHER_FEE", "Boshqa to'lovlar uchun"
 
     student_group = models.ForeignKey(
         StudentGroup,
@@ -106,7 +105,10 @@ class Transaction(models.Model):
 
     comment = models.TextField(blank=True, verbose_name="Izoh")
     created_at = models.DateTimeField(
-        default=timezone.now, verbose_name="Yaratilgan vaqti"
+        auto_now_add=True, verbose_name="Yaratilgan vaqti",
+    )
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="O'zgartirish kiritilgan vaqti"
     )
     created_by = models.ForeignKey(
         User,
@@ -119,6 +121,13 @@ class Transaction(models.Model):
     class Meta:
         verbose_name = "Tranzaksiya"
         verbose_name_plural = "Tranzaksiyalar"
+        indexes = [
+            models.Index(fields=["student_group", "category", "created_at"]),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["transaction_type"]),
+        ]
+        ordering = ['-created_at']
         ordering = ["-created_at"]
 
     def __str__(self):
@@ -153,7 +162,6 @@ class Transaction(models.Model):
         # Force fees to be debits
         if self.category in [
             self.TransactionCategory.MONTHLY_FEE,
-            self.TransactionCategory.INITIAL_FEE,
-            self.TransactionCategory.BOOK_FEE,
+            self.TransactionCategory.OTHER_FEE,
         ]:
             self.transaction_type = self.TransactionType.DEBIT

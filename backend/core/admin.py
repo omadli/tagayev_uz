@@ -145,7 +145,7 @@ class GroupAdmin(ImportExportModelAdmin):
 
     @admin.display(description="Current Price")
     def price(self, obj: Group):
-        return obj.current_price
+        return f"{obj.current_price:0,.2f}"
 
 
 @admin.register(StudentGroup)
@@ -154,16 +154,17 @@ class StudentGroupAdmin(ImportExportModelAdmin):
         "student",
         "group",
         "joined_at",
-        "price",
         "effective_price_display",
         "has_specific_price",
+        "is_archived",
+        "archived_at",
     )
     list_filter = ("group__branch", "group__name", "is_archived")
     search_fields = ("student__full_name", "group__name")
 
     @admin.display(description="Price (UZS)")
     def effective_price_display(self, obj: StudentGroup):
-        return obj.effective_price
+        return f"{obj.effective_price:0,.2f}"
 
     @admin.display(boolean=True, description="Specific Price")
     def has_specific_price(self, obj):

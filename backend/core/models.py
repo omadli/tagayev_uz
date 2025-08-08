@@ -22,6 +22,9 @@ class BaseModel(models.Model):
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=["is_archived"]),
+        ]
         ordering = ["-created_at"]
 
 
@@ -91,6 +94,7 @@ class Student(BaseModel):
         indexes = [
             models.Index(fields=["full_name"]),
             models.Index(fields=["phone_number"]),
+            models.Index(fields=["branch"]),
         ]
         verbose_name = "O'quvchi"
         verbose_name_plural = "O'quvchilar"
@@ -115,6 +119,7 @@ class Parent(BaseModel):
 
     class Meta:
         indexes = [
+            models.Index(fields=["student"]),
             models.Index(fields=["full_name"]),
             models.Index(fields=["phone_number"]),
         ]
@@ -296,6 +301,10 @@ class Group(BaseModel):
     class Meta:
         indexes = [
             models.Index(fields=["name"]),
+            models.Index(fields=["teacher"]),
+            models.Index(fields=["branch"]),
+            models.Index(fields=["start_date"]),
+            models.Index(fields=["end_date"]),
         ]
         verbose_name = "Guruh"
         verbose_name_plural = "Guruhlar"
@@ -337,6 +346,10 @@ class StudentGroup(BaseModel):
         unique_together = ("student", "group")
         verbose_name = "Student Group"
         verbose_name_plural = "Student Groups"
+        indexes = [
+            models.Index(fields=["group"]),
+            models.Index(fields=["student"]),
+        ]
 
     def __str__(self):
         return f"{self.student.full_name} in {self.group.name}"
@@ -379,6 +392,8 @@ class Attendance(models.Model):
         unique_together = ("student_group", "date")
         indexes = [
             models.Index(fields=["date"]),
+            models.Index(fields=["student_group"]),
+            models.Index(fields=["student_group", "date"]),
         ]
         verbose_name = "Davomat"
         verbose_name_plural = "Davomatlar"
@@ -445,6 +460,8 @@ class GroupScheduleOverride(models.Model):
         indexes = [
             models.Index(fields=["original_date"]),
             models.Index(fields=["new_date"]),
+            models.Index(fields=["group", "original_date"]),
+            models.Index(fields=["group", "new_date"])
         ]
 
     def __str__(self):

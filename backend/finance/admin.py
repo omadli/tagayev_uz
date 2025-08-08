@@ -24,7 +24,7 @@ class TransactionAdmin(ImportExportModelAdmin):
         "student_group",
         "transaction_type",
         "category",
-        "amount",
+        "amount_display",
         "payment_type",
         "receiver",
         "created_at",
@@ -71,3 +71,8 @@ class TransactionAdmin(ImportExportModelAdmin):
         if not obj.pk:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
+
+    @admin.display(description="Amount")
+    def amount_display(self, obj: Transaction):
+        amount = obj.amount
+        return f"{amount:0,.2f}"
