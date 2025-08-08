@@ -18,7 +18,16 @@ import {
   IconButton,
   Tooltip,
 } from "@mui/material";
-import { Check, X, Lock, Square, Minus, MessageSquareText, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Check,
+  X,
+  Lock,
+  Square,
+  Minus,
+  MessageSquareText,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 import dayjs from "dayjs";
 import clsx from "clsx";
 import "dayjs/locale/uz-latn"; // Ensure Uzbek locale is loaded
@@ -27,15 +36,29 @@ dayjs.locale("uz-latn"); // Set dayjs to use Uzbek globally for month names
 // Assume a CommentModal component exists
 import CommentModal from "./CommentModal";
 
-const AttendanceActionPopup = ({ onSelect, onClose }) => {
+const AttendanceActionPopup = React.memo(({ onSelect, onClose }) => {
   const ref = useRef(null);
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (ref.current && !ref.current.contains(event.target)) onClose();
     };
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose]);
+
+  const handleSelect = (value) => {
+    onSelect(value);
+    onClose(); // Explicitly call onClose
+  };
 
   return (
     <div
@@ -43,24 +66,12 @@ const AttendanceActionPopup = ({ onSelect, onClose }) => {
       className="absolute bg-white dark:bg-dark-accent shadow-lg rounded-full flex z-20 p-1"
     >
       <Tooltip title="Kelmadi">
-        <IconButton
-          size="small"
-          onClick={() => {
-            onSelect(false);
-            onClose();
-          }}
-        >
+        <IconButton size="small" onClick={() => handleSelect(false)}>
           <X className="text-red-500" />
         </IconButton>
       </Tooltip>
       <Tooltip title="Keldi">
-        <IconButton
-          size="small"
-          onClick={() => {
-            onSelect(true);
-            onClose();
-          }}
-        >
+        <IconButton size="small" onClick={() => handleSelect(true)}>
           <Check className="text-green-500" />
         </IconButton>
       </Tooltip>
@@ -68,8 +79,7 @@ const AttendanceActionPopup = ({ onSelect, onClose }) => {
         <IconButton
           size="small"
           onClick={() => {
-            onSelect(null);
-            onClose();
+            handleSelect(null);
           }}
         >
           <Square className="text-gray-400" />
@@ -77,7 +87,7 @@ const AttendanceActionPopup = ({ onSelect, onClose }) => {
       </Tooltip>
     </div>
   );
-};
+});
 
 const AttendanceTab = ({ group }) => {
   const { theme } = useSettings();
@@ -125,236 +135,232 @@ const AttendanceTab = ({ group }) => {
   }, [fetchData]);
 
   // --- REAL-TIME ATTENDANCE UPDATE ---
-  const handleAttendanceChange = async (
-    student_group_id,
-    date,
-    is_present,
-    comment = ""
-  ) => {
-    const key = `${student_group_id}_${date}`;
-    const originalData = JSON.parse(JSON.stringify(data));
+  const handleAttendanceChange = useCallback(
+    async (student_group_id, date, is_present, comment = "") => {
+      const key = `${student_group_id}_${date}`;
 
-    // Optimistic UI update
-    const newData = { ...data };
-    if (is_present === null) {
-      delete newData.attendance_data[key];
-    } else {
-      newData.attendance_data[key] = { is_present, comment };
-    }
-    setData(newData);
-
-    // API Call
-    try {
-      const response = await api.post(`/core/groups/${group.id}/attendance/`, {
-        student_group_id,
-        date,
-        is_present,
-        comment,
-      });
-
+      let originalData;
       setData((prevData) => {
-        const finalData = { ...prevData };
+        originalData = JSON.parse(JSON.stringify(prevData));
+        const newData = { ...prevData };
         if (is_present === null) {
-          delete finalData.attendance_data[key];
+          delete newData.attendance_data[key];
         } else {
-          finalData.attendance_data[key] = response.data;
+          newData.attendance_data[key] = { is_present, comment };
         }
-        return finalData;
+        return newData;
       });
 
-      // 4. Show a success toast
-      toast.success("Davomat belgilandi!");
-    } catch (error) {
-      toast.error(error.response?.data?.comment?.[0] || "Xatolik yuz berdi!");
-      setData(originalData);
-    }
-  };
+      try {
+        const response = await api.post(
+          `/core/groups/${group.id}/attendance/`,
+          {
+            student_group_id,
+            date,
+            is_present,
+            comment,
+          }
+        );
 
-  const onActionSelect = (is_present) => {
-    if (!activeCell) return;
-    const { enrollmentId, date } = activeCell;
+        setData((prevData) => {
+          const finalData = { ...prevData };
+          if (is_present === null) {
+            delete finalData.attendance_data[key];
+          } else {
+            finalData.attendance_data[key] = response.data;
+          }
+          return finalData;
+        });
 
-    if (is_present === false) {
-      const enrollment = data.enrollments.find(
-        (e) => e.student_group_id === enrollmentId
-      );
-      setCommentModal({
-        isOpen: true,
-        record: { enrollmentId, date },
-        studentName: enrollment ? enrollment.student_name : "",
-      });
-    } else {
-      handleAttendanceChange(enrollmentId, date, is_present);
-    }
+        toast.success("Davomat belgilandi!");
+      } catch (error) {
+        toast.error(error.response?.data?.comment?.[0] || "Xatolik yuz berdi!");
+        setData(originalData);
+      }
+    },
+    [group.id]
+  );
 
-    setActiveCell(null);
-  };
+  const onActionSelect = useCallback(
+    (is_present) => {
+      if (!activeCell) return;
+      const { enrollmentId, date } = activeCell;
+
+      if (is_present === false) {
+        const enrollment = data.enrollments.find(
+          (e) => e.student_group_id === enrollmentId
+        );
+        setCommentModal({
+          isOpen: true,
+          record: { enrollmentId, date },
+          studentName: enrollment ? enrollment.student_name : "",
+        });
+      } else {
+        handleAttendanceChange(enrollmentId, date, is_present);
+      }
+
+      setTimeout(() => setActiveCell(null), 50);
+    },
+    [activeCell, data.enrollments, handleAttendanceChange]
+  );
 
   // --- RENDER LOGIC ---
-  const renderCell = (enrollment, day) => {
-    const key = `${enrollment.student_group_id}_${day}`;
-    const record = data.attendance_data[key];
-    const isCellActive =
-      activeCell?.enrollmentId === enrollment.student_group_id &&
-      activeCell?.date === day;
+  const renderCell = useCallback(
+    (enrollment, day) => {
+      const key = `${enrollment.student_group_id}_${day}`;
+      const record = data.attendance_data[key];
+      const isCellActive =
+        activeCell?.enrollmentId === enrollment.student_group_id &&
+        activeCell?.date === day;
 
-    const dayAsDayjs = dayjs(day);
-    const joinedAt = dayjs(enrollment.joined_at);
-    const archivedAt = enrollment.archived_at
-      ? dayjs(enrollment.archived_at)
-      : null;
+      const dayAsDayjs = dayjs(day);
+      const joinedAt = dayjs(enrollment.joined_at);
+      const archivedAt = enrollment.archived_at
+        ? dayjs(enrollment.archived_at)
+        : null;
 
-    const isBeforeJoin = dayAsDayjs.isBefore(joinedAt, "day");
-    const isAfterArchive = archivedAt && dayAsDayjs.isAfter(archivedAt, "day");
-    const isFuture = dayAsDayjs.isAfter(dayjs(), "day");
-    const isArchived = enrollment.is_archived;
-    const iconClass = clsx("mx-auto", { "opacity-70": isArchived });
+      const isBeforeJoin = dayAsDayjs.isBefore(joinedAt, "day");
+      const isAfterArchive =
+        archivedAt && dayAsDayjs.isAfter(archivedAt, "day");
+      const isFuture = dayAsDayjs.isAfter(dayjs(), "day");
+      const isArchived = enrollment.is_archived;
+      const iconClass = clsx("mx-auto", { "opacity-70": isArchived });
 
-    if (isBeforeJoin) {
-      return (
-        <Tooltip title="Bu vaqtda hali guruhga qo'shilmagan" placement="top">
-          <Minus
-            size={16}
-            className="text-gray-300 dark:text-gray-600 mx-auto"
-          />
-        </Tooltip>
-      );
-    }
-
-    if (isAfterArchive) {
-      return (
-        <Tooltip title="Guruhdan chiqarilgan" placement="top">
-          <Minus
-            size={16}
-            className="text-gray-300 dark:text-gray-600 mx-auto"
-          />
-        </Tooltip>
-      );
-    }
-
-    if (isArchived) {
-      if (record?.is_present === true) {
+      if (isBeforeJoin) {
         return (
-          <Tooltip
-            title={`Keldi - ${dayjs(record.updated_at).format(
-              "DD.MM.YYYY HH:mm"
-            )}`}
-            placement="top"
-          >
-            <Check size={16} className={clsx("text-green-500", iconClass)} />
+          <Tooltip title="Bu vaqtda hali guruhga qo'shilmagan" placement="top">
+            <Minus
+              size={16}
+              className="text-gray-300 dark:text-gray-600 mx-auto"
+            />
           </Tooltip>
         );
       }
 
-      if (record?.is_present === false) {
-        if (record.comment) {
+      if (isAfterArchive) {
+        return (
+          <Tooltip title="Guruhdan chiqarilgan" placement="top">
+            <Minus
+              size={16}
+              className="text-gray-300 dark:text-gray-600 mx-auto"
+            />
+          </Tooltip>
+        );
+      }
+
+      if (isArchived) {
+        if (record?.is_present === true) {
           return (
             <Tooltip
-              title={`${record.comment} (${dayjs(record.updated_at).format(
+              title={`Keldi - ${dayjs(record.updated_at).format(
                 "DD.MM.YYYY HH:mm"
-              )})`}
+              )}`}
               placement="top"
             >
-              <MessageSquareText
-                size={16}
-                className={clsx("text-red-600", iconClass)}
-              />
+              <Check size={16} className={clsx("text-green-500", iconClass)} />
             </Tooltip>
           );
         }
+
+        if (record?.is_present === false) {
+          if (record.comment) {
+            return (
+              <Tooltip
+                title={`${record.comment} (${dayjs(record.updated_at).format(
+                  "DD.MM.YYYY HH:mm"
+                )})`}
+                placement="top"
+              >
+                <MessageSquareText
+                  size={16}
+                  className={clsx("text-red-600", iconClass)}
+                />
+              </Tooltip>
+            );
+          }
+          return (
+            <Tooltip
+              title={`Kelmadi - ${dayjs(record.updated_at).format(
+                "DD.MM.YYYY HH:mm"
+              )}`}
+              placement="top"
+            >
+              <X size={16} className={clsx("text-red-500", iconClass)} />
+            </Tooltip>
+          );
+        }
+
         return (
-          <Tooltip
-            title={`Kelmadi - ${dayjs(record.updated_at).format(
-              "DD.MM.YYYY HH:mm"
-            )}`}
-            placement="top"
-          >
-            <X size={16} className={clsx("text-red-500", iconClass)} />
+          <Tooltip title="Belgilanmagan" placement="top">
+            <Square size={16} className={clsx("text-gray-400", iconClass)} />
           </Tooltip>
         );
       }
 
+      if (isFuture) {
+        return <Lock size={16} className="text-gray-400 mx-auto" />;
+      }
+
+      // --- Default (editable) mode ---
+      let StatusIcon = <Square size={16} className="text-gray-300" />;
+      let tooltipTitle = "Belgilanmagan";
+
+      if (record) {
+        if (record.is_present) {
+          StatusIcon = (
+            <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={16} className="text-green-600" />
+            </div>
+          );
+          tooltipTitle = `Keldi - ${dayjs(record.updated_at).format(
+            "DD.MM.YYYY HH:mm"
+          )}`;
+        } else if (record.comment) {
+          StatusIcon = (
+            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+              <MessageSquareText size={16} className="text-red-600" />
+            </div>
+          );
+          tooltipTitle = `${record.comment} (${dayjs(record.updated_at).format(
+            "DD.MM.YYYY HH:mm"
+          )})`;
+        } else {
+          StatusIcon = (
+            <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
+              <X size={16} className="text-red-600" />
+            </div>
+          );
+          tooltipTitle = `Kelmadi - ${dayjs(record.updated_at).format(
+            "DD.MM.YYYY HH:mm"
+          )}`;
+        }
+      }
+
       return (
-        <Tooltip title="Belgilanmagan" placement="top">
-          <Square size={16} className={clsx("text-gray-400", iconClass)} />
+        <Tooltip title={tooltipTitle} placement="top">
+          <div
+            className="relative flex justify-center items-center h-full w-full cursor-pointer"
+            onClick={() =>
+              setActiveCell({
+                enrollmentId: enrollment.student_group_id,
+                date: day,
+              })
+            }
+          >
+            {isCellActive ? (
+              <AttendanceActionPopup
+                onSelect={onActionSelect}
+                onClose={() => setActiveCell(null)}
+              />
+            ) : (
+              StatusIcon
+            )}
+          </div>
         </Tooltip>
       );
-    }
-
-    if (isFuture) {
-      return <Lock size={16} className="text-gray-400 mx-auto" />;
-    }
-
-    // --- Default (editable) mode ---
-    let StatusIcon = <Square size={16} className="text-gray-300" />;
-    let tooltipTitle = "Belgilanmagan";
-
-    if (record) {
-      if (record.is_present) {
-        StatusIcon = (
-          <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-            <Check size={16} className="text-green-600" />
-          </div>
-        );
-        tooltipTitle = `Keldi - ${dayjs(record.updated_at).format(
-          "DD.MM.YYYY HH:mm"
-        )}`;
-      } else if (record.comment) {
-        StatusIcon = (
-          <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-            <MessageSquareText size={16} className="text-red-600" />
-          </div>
-        );
-        tooltipTitle = `${record.comment} (${dayjs(record.updated_at).format(
-          "DD.MM.YYYY HH:mm"
-        )})`;
-      } else {
-        StatusIcon = (
-          <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center">
-            <X size={16} className="text-red-600" />
-          </div>
-        );
-        tooltipTitle = `Kelmadi - ${dayjs(record.updated_at).format(
-          "DD.MM.YYYY HH:mm"
-        )}`;
-      }
-    }
-
-    return (
-      <Tooltip title={tooltipTitle} placement="top">
-        <div
-          className="relative flex justify-center items-center h-full w-full cursor-pointer"
-          onClick={() =>
-            setActiveCell({
-              enrollmentId: enrollment.student_group_id,
-              date: day,
-            })
-          }
-        >
-          {isCellActive ? (
-            <AttendanceActionPopup
-              onSelect={onActionSelect}
-              onClose={() => setActiveCell(null)}
-            />
-          ) : (
-            StatusIcon
-          )}
-        </div>
-      </Tooltip>
-    );
-  };
-
-  const allMonths = useMemo(() => {
-    const months = [];
-    let monthIterator = dayjs(group.start_date).startOf("month");
-    const end = dayjs(group.end_date).endOf("month");
-
-    while (monthIterator.isSame(end) || monthIterator.isBefore(end)) {
-      months.push({ year: monthIterator.year(), month: monthIterator.month() });
-      monthIterator = monthIterator.add(1, "month");
-    }
-    return months;
-  }, [group.start_date, group.end_date]);
+    },
+    [data, activeCell, onActionSelect]
+  );
 
   const handlePrevMonth = () => {
     const newDate = dayjs()
@@ -427,7 +433,10 @@ const AttendanceTab = ({ group }) => {
                     O'quvchilar
                   </th>
                   {data.lesson_days.map((day) => (
-                    <th key={day} className="p-3 text-center font-bold text-gray-800 dark:text-text-light-primary border-b dark:border-dark-tertiary">
+                    <th
+                      key={day}
+                      className="p-3 text-center font-bold text-gray-800 dark:text-text-light-primary border-b dark:border-dark-tertiary"
+                    >
                       <Tooltip
                         title={`${dayjs(day).format("D-MMMM")}`}
                         placement="right"
