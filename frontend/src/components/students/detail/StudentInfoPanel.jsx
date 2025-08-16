@@ -117,8 +117,8 @@ const StudentInfoPanel = ({
         </span>
       </InfoRow>
       <InfoRow icon={Wallet} label="Umumiy balansi">
-        <span className={clsx(student.total_balance < 0 && "text-red-500")}>
-          {formatCurrency(student.total_balance)}
+        <span className={clsx(student.balance < 0 && "text-red-500")}>
+          {formatCurrency(student.balance)}
         </span>
       </InfoRow>
       <InfoRow icon={Info} label="Izoh">
