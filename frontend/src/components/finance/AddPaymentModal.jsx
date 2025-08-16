@@ -56,7 +56,7 @@ const schema = yup.object().shape({
     .positive("Summa 0 dan katta bo'lishi kerak")
     .required("To'lov miqdori majburiy")
     .typeError("Summa majburiy"),
-  payment_type_id: yup.string().required("To'lov turi majburiy"), // Now a simple string/number ID,
+  payment_type_id: yup.mixed().required("To'lov turi majburiy"), // Now a simple string/number ID,
   receiver_id: yup.string().required("Qabul qiluvchi majburiy"),
   comment: yup.string().required("Izoh kiritilishi shart"),
   // --- VALIDATION FOR DATE & TIME ---
@@ -137,7 +137,7 @@ const AddPaymentModal = ({
         }));
         setPaymentTypes(paymentTypeOptions);
         if (paymentTypeOptions.length > 0) {
-          setValue("payment_type_id", paymentTypeOptions[0]);
+          setValue("payment_type_id", paymentTypeOptions[0].value);
         }
       });
 
@@ -163,7 +163,7 @@ const AddPaymentModal = ({
           (r) => r.value === currentUser.user_id
         );
         if (defaultReceiver) {
-          setValue("receiver_id", defaultReceiver);
+          setValue("receiver_id", defaultReceiver.value);
         }
       });
     }
@@ -429,11 +429,9 @@ const AddPaymentModal = ({
                         <InputLabel>To'lov turi</InputLabel>
                         <MuiSelect
                           {...field}
-                          value={
-                            field.value | (paymentTypes.length > 0)
+                          value={field.value ?? (paymentTypes.length > 0)
                               ? paymentTypes[0].value
-                              : ""
-                          }
+                              : ""}
                           label="To'lov turi"
                           onChange={(e) => field.onChange(e.target.value)}
                         >
@@ -466,11 +464,10 @@ const AddPaymentModal = ({
                       <InputLabel>Qabul qiluvchi</InputLabel>
                       <MuiSelect
                         {...field}
-                        value={
-                          field.value | (receivers.length > 0)
+                        value={field.value ?? (receivers.length > 0)
                             ? receivers[0].value
                             : ""
-                        }
+                          }
                         label="Qabul qiluvchi"
                         onChange={(e) => field.onChange(e.target.value)}
                       >
