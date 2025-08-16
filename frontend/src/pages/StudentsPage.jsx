@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -28,7 +29,7 @@ import {
 } from "../data/dataTableStyles.jsx";
 
 import Avatar from "@mui/material/Avatar";
-import Checkbox from '@mui/material/Checkbox';
+import Checkbox from "@mui/material/Checkbox";
 import { stringAvatar } from "../components/ui/Avatar";
 
 // Import child components
@@ -42,6 +43,8 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
   // --- Get selectedBranchId from the layout ---
   const { theme, selectedBranchId } = useSettings();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   // --- STATE MANAGEMENT ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -62,10 +65,12 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     search: "",
     is_archived: false,
     branch: null, // Start with null
-    group_status: null,
-    payment_status: null,
-    group_id: null,
-    teacher_id: isMyStudentsPage ? currentUser.user_id : null,
+    group_status: searchParams.get("group_status") || null,
+    payment_status: searchParams.get("payment_status") || null,
+    group_id: searchParams.get("group") || null,
+    teacher_id: isMyStudentsPage
+      ? currentUser.user_id
+      : searchParams.get("teacher") || null,
   });
 
   // State to hold data for filter dropdowns
@@ -179,7 +184,13 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
   }, []);
 
   // --- Action Handlers for a specific student ---
-  const handleView = (student) => alert(`Viewing ${student.full_name}`);
+  const handleView = (student) => {
+    if (student && student.id) {
+      navigate(
+        `/${isMyStudentsPage ? "mystudents" : "students"}/${student.id}`
+      );
+    }
+  };
 
   const handleEdit = (student) => {
     setSelectedStudent(student);
@@ -206,8 +217,13 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
         { id: toastId }
       );
       fetchStudents();
-    } catch (error) {
-      toast.error("Xatolik yuz berdi", { id: toastId });
+    } catch (err) {
+      const errorData = err.response?.data;
+      const msg =
+        typeof errorData === "object"
+          ? Object.values(errorData).flat().join(" ")
+          : "Xatolik yuz berdi";
+      toast.error(msg, { id: toastId });
     }
   };
 
@@ -222,8 +238,13 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
         await api.delete(`/core/students/${student.id}/`);
         toast.success("Muvaffaqiyatli o'chirildi", { id: toastId });
         fetchStudents();
-      } catch (error) {
-        toast.error("Xatolik yuz berdi", { id: toastId });
+      } catch (err) {
+        const errorData = err.response?.data;
+        const msg =
+          typeof errorData === "object"
+            ? Object.values(errorData).flat().join(" ")
+            : "Xatolik yuz berdi";
+        toast.error(msg, { id: toastId });
       }
     }
   };
@@ -331,9 +352,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       selector: (row) => row.full_name,
       sortable: true,
       cell: (row) => (
-        <div className="font-medium truncate">
-          {row.full_name}
-        </div>
+        <div className="font-medium truncate" onClick={() => handleView(row)}>{row.full_name}</div>
       ),
     },
     {
@@ -349,7 +368,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       name: "Balans",
       reorder: true,
       grow: true,
-      minWidth: "120px",
+      minWidth: "150px",
       selector: (row) => row.balance,
       sortable: true,
       cell: (row) => (
@@ -398,9 +417,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       // --- FIX for 'grow' prop ---
       // We control the width directly with inline styles on the cell's content.
       cell: (row) => (
-        <div className="truncate">
-          {row.comment || "Izoh yo'q"}
-        </div>
+        <div className="truncate">{row.comment || "Izoh yo'q"}</div>
       ),
     },
     {
@@ -526,6 +543,8 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
           selectableRows
           selectableRowsHighlight
           highlightOnHover
+          pointerOnHover
+          onRowClicked={(row) => handleView(row)}
           onSelectedRowsChange={handleRowSelected}
           // pagination
           // paginationRowsPerPageOptions={[10, 30, 50, 100]}

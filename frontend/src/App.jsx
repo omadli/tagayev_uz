@@ -7,11 +7,11 @@ import RoleBasedRoute from "./components/auth/RoleBasedRoute";
 import LoginPage from "./pages/LoginPage";
 import DashboardLayout from "./layouts/DashboardLayout";
 import DashboardPage from "./pages/DashboardPage";
-// --- THIS IS THE FIX: Import the new TeachersPage ---
 import TeachersPage from "./pages/TeachersPage";
 import StudentsPage from "./pages/StudentsPage";
 import MyStudentsPage from "./pages/MyStudentsPage";
-import StaffPage from "./pages/StaffPage"; // Assuming this page also exists as planned
+import StudentDetailPage from "./pages/StudentDetailPage";
+import StaffPage from "./pages/StaffPage";
 import GroupsPage from "./pages/GroupsPage";
 import MyGroupsPage from "./pages/MyGroupsPage";
 import RoomsPage from "./pages/RoomsPage";
@@ -57,6 +57,7 @@ function App() {
           <Route element={<RoleBasedRoute allowedRoles={["Admin", "CEO"]} />}>
             <Route index element={<DashboardPage />} />
             <Route path="students" element={<StudentsPage />} />
+            <Route path="/students/:studentId" element={<StudentDetailPage />} />
             <Route path="groups" element={<GroupsPage />} />
             <Route path="teachers" element={<TeachersPage />} />
             <Route path="/groups/:groupId" element={<GroupDetailPage />} />
@@ -68,7 +69,6 @@ function App() {
             <Route path="settings/main/rooms" element={<RoomsPage />} />
             <Route path="settings/main/branches" element={<BranchesPage />} />
             <Route path="settings/main/payment-types" element={<PaymentTypesPage />} />
-            {/* Add other CEO-only settings pages here */}
           </Route>
         </Route>
 

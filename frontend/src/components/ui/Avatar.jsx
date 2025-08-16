@@ -21,14 +21,27 @@ function stringToColor(string) {
   return color;
 }
 
-export function stringAvatar(name) {
+export function stringAvatar(name, sx = {}) {
+  // Defensive check for a valid name
+  if (!name || typeof name !== 'string' || name.trim() === '') {
+    return { sx }; // Return empty sx if name is invalid
+  }
+  
+  const nameParts = name.split(" ");
+  const initials = 
+      nameParts.length > 1
+      ? `${nameParts[0][0]}${nameParts[1][0]}`
+      : `${name.charAt(0)}`;
+      
   return {
+    // We now merge the base styles with any additional sx props passed in.
     sx: {
       bgcolor: stringToColor(name),
+      // Add other base styles here, like font size
+      fontSize: '1.5rem', // Default font size for the initials
+      ...sx, // The additional styles (like width and height) are applied here
     },
-    children: name.includes(" ")
-      ? `${name.split(" ")[0][0]}${name.split(" ")[1][0]}`
-      : `${name.charAt(0)}`,
+    children: initials.toUpperCase(),
   };
 }
 
