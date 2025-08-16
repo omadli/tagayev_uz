@@ -13,7 +13,9 @@ from .serializers import (
     GroupPriceSerializer,
     PaymentTypeSerializer,
     PaymentCreateSerializer,
+    TransactionDetailSerializer,
 )
+from .filters import TransactionFilter
 
 
 class GroupPriceViewSet(viewsets.ModelViewSet):
@@ -112,12 +114,29 @@ class TransactionViewSet(viewsets.ModelViewSet):
     For now, it's primarily used for creating payment (CREDIT) transactions.
     """
 
-    serializer_class = PaymentCreateSerializer
     permission_classes = [IsAuthenticated]
-    queryset = Transaction.objects.all()
-    http_method_names = [
-        "post"
-    ]  # Only allow creating transactions via this endpoint for now
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TransactionFilter
+
+    def get_serializer_class(self, *args, **kwargs):
+        if self.action == "create":
+            return PaymentCreateSerializer
+        return TransactionDetailSerializer
+
+    def get_queryset(self):
+        # Only allow users to see transactions for their own students
+        # This is a key security measure
+        user = self.request.user
+        if user.is_ceo or user.is_admin:
+            return Transaction.objects.select_related(
+                "student_group__group", "payment_type", "receiver"
+            ).all()
+        elif user.is_teacher:
+            # Teachers can only see transactions for students in their groups
+            return Transaction.objects.filter(
+                student_group__group__teacher=user
+            ).select_related("student_group__group", "payment_type", "receiver")
+        return Transaction.objects.none()
 
     def get_serializer_context(self):
         """

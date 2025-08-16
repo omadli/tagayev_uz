@@ -461,7 +461,7 @@ class GroupScheduleOverride(models.Model):
             models.Index(fields=["original_date"]),
             models.Index(fields=["new_date"]),
             models.Index(fields=["group", "original_date"]),
-            models.Index(fields=["group", "new_date"])
+            models.Index(fields=["group", "new_date"]),
         ]
 
     def __str__(self):

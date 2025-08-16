@@ -105,7 +105,8 @@ class Transaction(models.Model):
 
     comment = models.TextField(blank=True, verbose_name="Izoh")
     created_at = models.DateTimeField(
-        auto_now_add=True, verbose_name="Yaratilgan vaqti",
+        auto_now_add=True,
+        verbose_name="Yaratilgan vaqti",
     )
     updated_at = models.DateTimeField(
         auto_now=True, verbose_name="O'zgartirish kiritilgan vaqti"
@@ -127,7 +128,7 @@ class Transaction(models.Model):
             models.Index(fields=["category"]),
             models.Index(fields=["transaction_type"]),
         ]
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         ordering = ["-created_at"]
 
     def __str__(self):

@@ -14,6 +14,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q, Sum, Count, F, Exists, OuterRef, ProtectedError
+from yaml import serialize
 
 from users.models import User
 from finance.models import Transaction
@@ -34,6 +35,7 @@ from .serializers import (
     BranchSerializer,
     RoomSerializer,
     StudentSerializer,
+    StudentDetailSerializer,
     StudentCreateSerializer,
     StudentUpdateSerializer,
     GroupSerializer,
@@ -400,6 +402,8 @@ class StudentViewSet(viewsets.ModelViewSet):
             return StudentCreateSerializer
         if self.action in ["update", "partial_update"]:
             return StudentUpdateSerializer
+        if self.action == "retrieve":
+            return StudentDetailSerializer
         return StudentSerializer
 
     def get_serializer_context(self):
@@ -434,6 +438,7 @@ class StudentViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = (
             Student.objects.select_related("branch")
+            .prefetch_related("parents")
             .prefetch_related("group_memberships__group__teacher")
             .annotate(
                 total_credits=Sum(
@@ -455,29 +460,39 @@ class StudentViewSet(viewsets.ModelViewSet):
         user: User = self.request.user
         if not (user.is_ceo or user.is_admin or user.is_superuser):
             queryset = queryset.filter(group_memberships__group__teacher__id=user.pk)
+        if self.request.query_params.get("is_archived"):
+            is_archived = (
+                self.request.query_params.get("is_archived", "false").lower() == "true"
+            )
+            queryset = queryset.filter(is_archived=is_archived)
+        return queryset.order_by("full_name")
 
-        is_archived = (
-            self.request.query_params.get("is_archived", "false").lower() == "true"
-        )
-        return queryset.filter(is_archived=is_archived).order_by("full_name")
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Overrides retrieve to add the total balance calculation.
+        """
+        # Get the base student instance
+        instance = self.get_object()
+
+        # --- THIS IS THE FIX: Calculate the total balance ---
+        # We annotate the single instance with its total balance across ALL enrollments.
+        queryset = self.get_queryset().filter(pk=instance.pk).first()
+        serializer = self.get_serializer(queryset)
+        return Response(serializer.data)    
 
     def destroy(self, request, *args, **kwargs):
         student = self.get_object()
 
         # 1. Check for related objects
-        has_groups = student.group_memberships.exists()
-        has_payments = student.payments.exists()
+        has_groups = student.group_memberships.filter(is_archived=False).exists()
 
-        # 2. If the student has related data
-        if has_groups or has_payments:
-            # 3. Only allow deletion if the user is a superuser
-            if not request.user.is_superuser:
-                return Response(
-                    {
-                        "detail": "Bu o'quvchini o'chirib bo'lmaydi, chunki u guruhlarga yoki to'lovlarga bog'langan. Faqat Superuser o'chira oladi."
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+        if has_groups:
+            return Response(
+                {
+                    "detail": "Bu o'quvchini o'chirib bo'lmaydi, chunki uning aktiv guruhlari mavjud."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         # 4. If checks pass, proceed with the default deletion
         try:

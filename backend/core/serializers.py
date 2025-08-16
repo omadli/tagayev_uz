@@ -1,5 +1,6 @@
 # backend/core/serializers.py
 
+from time import timezone
 from rest_framework import serializers
 from .models import (
     Branch,
@@ -15,6 +16,8 @@ from .models import (
 from users.models import User
 from finance.models import GroupPrice
 from dateutil.relativedelta import relativedelta
+from django.utils import timezone
+from datetime import timedelta
 
 
 class BranchSerializer(serializers.ModelSerializer):
@@ -371,24 +374,19 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         Logic: It's one month after the student's join date, or one month after their
         last monthly fee debit, whichever is later.
         """
-        last_debit = (
-            obj.transactions.filter(category="MONTHLY_FEE")
-            .order_by("-created_at")
-            .first()
-        )
-
-        base_date = obj.joined_at
-        if last_debit:
-            base_date = last_debit.created_at.date()
-
-        # Calculate the next due date by adding one month
-        next_date = base_date + relativedelta(months=1)
-
-        # Ensure the due date is not after the group ends
-        if next_date > obj.group.end_date:
-            return None
-
-        return next_date
+        now = timezone.now()
+        if (
+            obj.joined_at.month == now.month
+            and obj.joined_at.year == now.year
+            and obj.joined_at.day != 1
+        ):
+            return obj.joined_at + relativedelta(days=5)
+        if now.day < 5:
+            return now.replace(day=5).date()
+        end_date = obj.group.end_date
+        if not (end_date.month == now.month and end_date.year == now.year):
+            return (now.replace(day=5) + relativedelta(months=1)).date()
+        return None
 
     def get_next_due_amount(self, obj: StudentGroup):
         """
@@ -397,7 +395,36 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
         For simplicity here, we'll return the full effective price.
         A more complex pro-rating logic could be added if needed.
         """
-        return obj.effective_price
+        now = timezone.now()
+        effective_price = obj.effective_price
+        end_date = obj.group.end_date
+        if (
+            obj.joined_at.month == now.month
+            and obj.joined_at.year == now.year
+            and obj.joined_at.day != 1
+        ):
+            days_in_month = (
+                now.replace(day=1) + relativedelta(months=1) - timedelta(days=1)
+            ).day
+            days_attended = days_in_month - obj.joined_at.day + 1
+            if end_date.month != now.month:
+                days_attended = end_date.day - obj.joined_at.day + 1
+            charge_amount = int(
+                round((effective_price / days_in_month) * days_attended, -3)
+            )
+            return charge_amount
+        if end_date.month == now.month and end_date.year == now.year:
+            if now.day > 5:
+                return None
+            days_in_month = (
+                now.replace(day=1) + relativedelta(months=1) - timedelta(days=1)
+            ).day
+            days_attended = end_date.day
+            charge_amount = int(
+                round((effective_price / days_in_month) * days_attended, -3)
+            )
+            return charge_amount
+        return effective_price
 
 
 class StudentCreateSerializer(serializers.ModelSerializer):
@@ -602,4 +629,35 @@ class AttendanceSerializer(serializers.ModelSerializer):
                 fields=("student_group", "date"),
                 message="Bu o'quvchi uchun bu sanada davomat allaqachon mavjud.",
             )
+        ]
+
+
+class ParentDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Parent
+        fields = ["id", "full_name", "phone_number", "gender", "comment"]
+
+
+class StudentDetailSerializer(serializers.ModelSerializer):
+    parents = ParentDetailSerializer(many=True, read_only=True)
+    branch_name = serializers.CharField(source="branch.name", read_only=True)
+    balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    groups = StudentGroupInfoSerializer(
+        source="group_memberships", many=True, read_only=True
+    )
+
+    class Meta:
+        model = Student
+        fields = [
+            "id",
+            "full_name",
+            "phone_number",
+            "profile_photo",
+            "birth_date",
+            "gender",
+            "comment",
+            "branch_name",
+            "parents",
+            "balance",
+            "groups",
         ]
