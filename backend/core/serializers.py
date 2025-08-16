@@ -346,6 +346,7 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
     teacher_name = serializers.CharField(
         source="group.teacher.full_name", read_only=True
     )
+    joined_at = serializers.DateField(read_only=True)
     # The 'balance' property from the model is automatically included
     balance = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     # Include the effective price for this enrollment
@@ -362,6 +363,7 @@ class StudentEnrollmentSerializer(serializers.ModelSerializer):
             "id",
             "group_name",
             "teacher_name",
+            "joined_at",
             "balance",
             "effective_price",
             "next_due_date",

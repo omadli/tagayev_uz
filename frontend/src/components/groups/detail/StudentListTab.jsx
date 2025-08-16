@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import DataTable from "react-data-table-component";
 import { useSettings } from "../../../context/SettingsContext";
 import { useAuth } from "../../../context/AuthContext";
@@ -35,6 +36,7 @@ import AddPaymentModal from "../../finance/AddPaymentModal";
 const StudentListTab = ({ group, refreshGroupDetails }) => {
   const { theme } = useSettings();
   const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
   const isManager =
     currentUser.roles.includes("Admin") || currentUser.roles.includes("CEO");
 
@@ -102,6 +104,14 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
     );
   }, [allEnrollments, searchQuery]);
 
+  const handleView = (enrollment) => {
+    if (enrollment && enrollment.student_id) {
+      navigate(
+        `/${isManager ? "students" : "mystudents"}/${enrollment.student_id}`
+      );
+    }
+  };
+  
   const handleRemove = (enrollment) =>
     setModalState((prev) => ({ ...prev, remove: enrollment }));
 
@@ -175,7 +185,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
     if (!enrollment) return [];
 
     const getActions = (enrollment) => {
-      let actions = [{ label: "Ko'rish", icon: Eye, onClick: () => {} }];
+      let actions = [{ label: "Ko'rish", icon: Eye, onClick: () => {handleView(enrollment)} }];
       if (isManager) {
         if (enrollment.is_archived) {
           // Actions for ARCHIVED students
@@ -252,7 +262,7 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
         selector: (row) => row.student_full_name,
         sortable: true,
         cell: (row) => (
-          <div className="font-medium truncate">{row.student_full_name}</div>
+          <div className="font-medium truncate" onClick={() => handleView(row)}>{row.student_full_name}</div>
         ),
       },
       {
@@ -369,6 +379,8 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
         responsive
         pagination
         highlightOnHover
+        pointerOnHover
+        onRowClicked={(row) => handleView(row)}
         customStyles={theme === "dark" ? darkThemeStyles : customStyles}
         noDataComponent={<NoDataComponent />}
         progressComponent={<ProgressComponent />}

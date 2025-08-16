@@ -478,7 +478,7 @@ class StudentViewSet(viewsets.ModelViewSet):
         # We annotate the single instance with its total balance across ALL enrollments.
         queryset = self.get_queryset().filter(pk=instance.pk).first()
         serializer = self.get_serializer(queryset)
-        return Response(serializer.data)    
+        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         student = self.get_object()
@@ -987,6 +987,7 @@ class GroupAttendanceView(APIView):
             "lesson_days": lesson_days,
             "enrollments": [
                 {
+                    "student_id": en.student.id,
                     "student_group_id": en.id,
                     "student_name": en.student.full_name,
                     "student_phone_number": en.student.phone_number,

@@ -108,7 +108,7 @@ class PaymentCreateSerializer(serializers.ModelSerializer):
             "comment",
             "created_at",  # Allow frontend to specify payment date
         ]
-        
+
         extra_kwargs = {
             "transaction_type": {"read_only": True},
             "category": {"read_only": True},
@@ -143,18 +143,26 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(
         source="student_group.group.name", read_only=True
     )
-    student_id = serializers.IntegerField(source="student_group.student.id", read_only=True)
-    student_name = serializers.CharField(source="student_group.student.full_name", read_only=True)
+    student_id = serializers.IntegerField(
+        source="student_group.student.id", read_only=True
+    )
+    student_name = serializers.CharField(
+        source="student_group.student.full_name", read_only=True
+    )
     payment_type_id = serializers.IntegerField(source="payment_type.id", read_only=True)
     payment_type_name = serializers.CharField(
-        source="payment_type.name", read_only=True,
+        source="payment_type.name",
+        read_only=True,
     )
     receiver_id = serializers.IntegerField(source="receiver.id", read_only=True)
     receiver_name = serializers.CharField(
-        source="receiver.full_name", read_only=True,
+        source="receiver.full_name",
+        read_only=True,
     )
     created_by_id = serializers.IntegerField(source="created_by.id", read_only=True)
-    created_by_name = serializers.CharField(source="created_by.full_name", read_only=True)
+    created_by_name = serializers.CharField(
+        source="created_by.full_name", read_only=True
+    )
 
     class Meta:
         model = Transaction
@@ -166,19 +174,16 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "comment",
             "created_at",
             "updated_at",
-
             # group & student
             "group_id",
             "group_name",
             "student_id",
             "student_name",
-
             # payment
             "payment_type_id",
             "payment_type_name",
             "receiver_id",
             "receiver_name",
-
             # audit
             "created_by_id",
             "created_by_name",

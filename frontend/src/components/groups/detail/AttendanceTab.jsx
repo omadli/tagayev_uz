@@ -5,9 +5,11 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+import { useNavigate } from "react-router-dom";
 import api from "../../../services/api";
 import toast from "react-hot-toast";
 import { useSettings } from "../../../context/SettingsContext";
+import { useAuth } from "../../../context/AuthContext";
 import { getMuiTheme } from "../../../theme/muiTheme";
 import { ThemeProvider } from "@mui/material/styles";
 import {
@@ -92,7 +94,10 @@ const AttendanceActionPopup = React.memo(({ onSelect, onClose }) => {
 const AttendanceTab = ({ group }) => {
   const { theme } = useSettings();
   const muiTheme = getMuiTheme(theme);
-
+  const { user: currentUser } = useAuth();
+  const navigate = useNavigate();
+  const isManager =
+    currentUser.roles.includes("Admin") || currentUser.roles.includes("CEO");
   // State
   const [view, setView] = useState({
     month: dayjs().month(),
@@ -203,6 +208,14 @@ const AttendanceTab = ({ group }) => {
     },
     [activeCell, data.enrollments, handleAttendanceChange]
   );
+
+  const handleView = (enrollment) => {
+    if (enrollment && enrollment.student_id) {
+      navigate(
+        `/${isManager ? "students" : "mystudents"}/${enrollment.student_id}`
+      );
+    }
+  };
 
   // --- RENDER LOGIC ---
   const renderCell = useCallback(
@@ -473,7 +486,7 @@ const AttendanceTab = ({ group }) => {
                         }`}
                         placement="right"
                       >
-                        <span className="cursor-pointer hover:text-blue-600">
+                        <span className="cursor-pointer hover:text-blue-600" onClick={() => handleView(enrollment)}>
                           {enrollment.student_name}{" "}
                           {enrollment.is_archived && (
                             <span className="text-red-600">( ARXIV )</span>

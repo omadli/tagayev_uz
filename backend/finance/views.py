@@ -117,6 +117,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = TransactionFilter
+    ordering_fields = ['created_at', 'amount']
+    ordering = ['-created_at']
 
     def get_serializer_class(self, *args, **kwargs):
         if self.action == "create":
