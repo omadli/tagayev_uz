@@ -78,7 +78,15 @@ const GroupSelect = ({ control, name, options, error }) => (
       name={name}
       control={control}
       render={({ field }) => (
-        <Select {...field} options={options} placeholder="..." />
+        <Select
+          {...field}
+          options={options}
+          placeholder="..."
+          menuPortalTarget={document.body}
+          styles={{
+            menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+          }}
+        />
       )}
     />
     <div className="flex justify-end">
