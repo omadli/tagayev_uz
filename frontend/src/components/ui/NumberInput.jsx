@@ -32,7 +32,7 @@ const NumberFormatCustom = React.forwardRef((props, ref) => {
 });
 
 
-const NumberInput = ({ control, name, label, error, ...props }) => {
+const NumberInput = ({ control, name, label, error, variant="outlined", ...props }) => {
     // Get the current theme to create the correct MUI theme
     const { theme } = useSettings();
     const muiTheme = getMuiTheme(theme);
@@ -47,7 +47,7 @@ const NumberInput = ({ control, name, label, error, ...props }) => {
                     <TextField
                         {...field}
                         label={label}
-                        variant="outlined"
+                        variant={variant}
                         fullWidth
                         error={!!error}
                         helperText={error?.message}
