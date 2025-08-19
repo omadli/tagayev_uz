@@ -170,20 +170,27 @@ const AddPaymentModal = ({
   }, [isOpen, currentUser, setValue]);
 
   useEffect(() => {
-  if (isOpen) {
-    reset({
-      created_at: dayjs(),
-      comment: `${getCurrentMonthUzbek()} oyi uchun to'lov`,
-      student: initialStudent,
-      student_group: initialGroup ?? null,
-      payment_type_id: paymentTypes.length > 0 ? paymentTypes[0].value : "",
-      receiver_id:
-        receivers.find((r) => r.value === currentUser.user_id)?.value ?? "",
-      amount: "",
-    });
-  }
-}, [isOpen, initialStudent, initialGroup, paymentTypes, receivers, currentUser, reset]);
-
+    if (isOpen) {
+      reset({
+        created_at: dayjs(),
+        comment: `${getCurrentMonthUzbek()} oyi uchun to'lov`,
+        student: initialStudent,
+        student_group: initialGroup ?? null,
+        payment_type_id: paymentTypes.length > 0 ? paymentTypes[0].value : "",
+        receiver_id:
+          receivers.find((r) => r.value === currentUser.user_id)?.value ?? "",
+        amount: "",
+      });
+    }
+  }, [
+    isOpen,
+    initialStudent,
+    initialGroup,
+    paymentTypes,
+    receivers,
+    currentUser,
+    reset,
+  ]);
 
   useEffect(() => {
     setValue("student_group", null);
@@ -490,7 +497,9 @@ const AddPaymentModal = ({
                       <MuiSelect
                         {...field}
                         value={
-                          field.value ?? receivers.length > 0
+                          field.value !== undefined && field.value !== null
+                            ? field.value
+                            : receivers.length > 0
                             ? receivers[0].value
                             : ""
                         }
