@@ -9,10 +9,10 @@ import {
   IconButton,
   Tooltip,
   CircularProgress,
+  TableContainer,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   Paper,
@@ -29,6 +29,8 @@ import {
   Info,
   MoreVertical,
   Calendar as CalendarIcon,
+  Check,
+  X,
 } from "lucide-react";
 import Select from "react-select";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
@@ -47,8 +49,12 @@ import * as yup from "yup";
 // Validation schema for the inline edit form
 const editSchema = yup.object().shape({
   created_at: yup.mixed().required("Sana majburiy"),
-  amount: yup.number().positive().required("Summa majburiy"),
+  amount: yup
+    .number()
+    .min(0, "0 yoki musbat son bo'lishi kerak")
+    .required("Summa majburiy"),
   comment: yup.string(),
+  student_group_id: yup.mixed().nullable(),
 });
 
 const StudentPaymentsTab = ({ studentId }) => {
@@ -70,7 +76,6 @@ const StudentPaymentsTab = ({ studentId }) => {
     dateRange: [dayjs().subtract(1, "month"), dayjs()],
   });
   const [ordering, setOrdering] = useState("-created_at"); // '-created_at' = newest first
-  const [datePickerAnchorEl, setDatePickerAnchorEl] = useState(null);
   const [actionPopup, setActionPopup] = useState({
     isOpen: false,
     data: null,
@@ -144,15 +149,6 @@ const StudentPaymentsTab = ({ studentId }) => {
   }, [transactions]);
   const finalBalance = totals.credit - totals.debit;
 
-  // --- EVENT HANDLERS ---
-  const handleDateIconClick = (event) => {
-    setDatePickerAnchorEl(event.currentTarget);
-  };
-  const handleDatePopupClose = () => {
-    setDatePickerAnchorEl(null);
-  };
-  const isDatePopupOpen = Boolean(datePickerAnchorEl);
-
   const openActionPopup = (e, transaction) => {
     e.stopPropagation();
     setActionPopup({
@@ -170,12 +166,12 @@ const StudentPaymentsTab = ({ studentId }) => {
   const handleDelete = async (transaction) => {
     const toastId = toast.loading("O'chirilmoqda...");
     try {
-        await api.delete(`/finance/transactions/${transaction.id}/`);
-        toast.success("Muvaffaqiyatli o'chirildi", { id: toastId });
-        fetchTransactions(); // Re-fetch data to show changes
-      } catch {
-        toast.error("Xatolik yuz berdi", { id: toastId });
-      }
+      await api.delete(`/finance/transactions/${transaction.id}/`);
+      toast.success("Muvaffaqiyatli o'chirildi", { id: toastId });
+      fetchTransactions(); // Re-fetch data to show changes
+    } catch {
+      toast.error("Xatolik yuz berdi", { id: toastId });
+    }
   };
   const EditRow = ({ transaction, onCancel }) => {
     const {
@@ -192,6 +188,7 @@ const StudentPaymentsTab = ({ studentId }) => {
         created_at: dayjs(transaction.created_at),
         amount: parseFloat(transaction.amount),
         comment: transaction.comment || "",
+        student_group_id: transaction.student_group_id || null,
       },
     });
 
@@ -200,15 +197,21 @@ const StudentPaymentsTab = ({ studentId }) => {
         amount: data.amount,
         comment: data.comment,
         created_at: data.created_at.toISOString(),
+        student_group_id: data.student_group_id,
       };
       const toastId = toast.loading("Saqlanmoqda...");
       try {
         await api.patch(`/finance/transactions/${transaction.id}/`, payload);
         toast.success("Muvaffaqiyatli saqlandi", { id: toastId });
-        fetchTransactions(); // Re-fetch data to show changes
-        setEditingId(null); // Exit edit mode
-      } catch {
-        toast.error("Xatolik yuz berdi", { id: toastId });
+        fetchTransactions();
+        setEditingId(null);
+      } catch (err) {
+        const errorData = err.response?.data;
+        const msg =
+          typeof errorData === "object"
+            ? Object.values(errorData).flat().join(" ")
+            : "Xatolik yuz berdi";
+        toast.error(msg, { id: toastId });
       }
     };
 
@@ -240,7 +243,17 @@ const StudentPaymentsTab = ({ studentId }) => {
             control={control}
             render={({ field }) => (
               <FormControl variant="standard" size="medium" fullWidth>
-                <MuiSelect {...field}>
+                <MuiSelect
+                  {...field}
+                  value={
+                    field.value !== undefined && field.value !== null
+                      ? field.value
+                      : transaction.student_group_id
+                      ? transaction.student_group_id
+                      : ""
+                  }
+                  onChange={(e) => field.onChange(e.target.value)}
+                >
                   {enrollmentOptions.map((en) => (
                     <MenuItem key={en.value} value={en.value}>
                       {en.label}
@@ -254,26 +267,34 @@ const StudentPaymentsTab = ({ studentId }) => {
         <TableCell colSpan={2}>
           <NumberInput
             name="amount"
-            label="To'lov miqdori"
             control={control}
             suffix=" so'm"
             error={errors.amount}
+            variant="standard"
           />
         </TableCell>
         <TableCell>
           <Controller
             name="comment"
             control={control}
-            render={({ field }) => <Input {...field} />}
+            render={({ field }) => <Input variant="standard" {...field} />}
           />
         </TableCell>
         <TableCell align="right">
-          <Button onClick={handleSubmit(onSave)} size="small">
-            Saqlash
-          </Button>
-          <Button onClick={onCancel} size="small" color="inherit">
-            Bekor
-          </Button>
+          <Tooltip title="Saqlash">
+            <IconButton
+              onClick={handleSubmit(onSave)}
+              color="success"
+              size="medium"
+            >
+              <Check />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Bekor qilish">
+            <IconButton onClick={onCancel} color="error" size="medium">
+              <X />
+            </IconButton>
+          </Tooltip>
         </TableCell>
       </TableRow>
     );
@@ -291,6 +312,10 @@ const StudentPaymentsTab = ({ studentId }) => {
             isLoading={isLoadingFilters}
             placeholder="Guruh bo'yicha filtr"
             className="flex-1 min-w-[200px]"
+            menuPortalTarget={document.body}
+            styles={{
+              menuPortal: (base) => ({ ...base, zIndex: 9999 }),
+            }}
           />
           <DatePicker
             label="Boshlanish sanasi"
@@ -333,25 +358,30 @@ const StudentPaymentsTab = ({ studentId }) => {
         <TableContainer
           component={Paper}
           elevation={0}
+          sx={{ maxHeight: 400 }}
           className="!bg-white dark:!bg-dark-secondary !rounded-lg border dark:!border-dark-tertiary"
         >
-          <Table size="small">
+          <Table stickyHeader aria-label="sticky table" size="small">
             <TableHead>
               <TableRow>
-                <TableCell>Sana</TableCell>
-                <TableCell>Guruh</TableCell>
-                <TableCell align="right">
+                <TableCell style={{ minWidth: 80 }}>Sana/Vaqt</TableCell>
+                <TableCell style={{ minWidth: 120 }}>Guruh</TableCell>
+                <TableCell style={{ minWidth: 80 }} align="right">
                   <Tooltip title="Debet">
                     <span>Hisoblangan</span>
                   </Tooltip>
                 </TableCell>
-                <TableCell align="right">
+                <TableCell style={{ minWidth: 80 }} align="right">
                   <Tooltip title="Kredit">
                     <span>To'langan</span>
                   </Tooltip>
                 </TableCell>
-                <TableCell>Izoh</TableCell>
-                <TableCell align="right">Harakatlar</TableCell>
+                <TableCell style={{ minWidth: 200, textAlign: "center" }}>
+                  Izoh
+                </TableCell>
+                <TableCell style={{ minWidth: 80, textAlign: "center" }}>
+                  Harakatlar
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -368,7 +398,6 @@ const StudentPaymentsTab = ({ studentId }) => {
                       key={t.id}
                       transaction={t}
                       onCancel={() => setEditingId(null)}
-                      onSave={() => {}}
                     />
                   ) : (
                     <TableRow key={t.id} hover>
@@ -396,18 +425,19 @@ const StudentPaymentsTab = ({ studentId }) => {
                       <TableCell align="right">
                         <div className="hidden md:flex items-center justify-end">
                           <Tooltip title="Chek">
-                            <IconButton size="small">
+                            <IconButton color="success" size="small">
                               <Printer />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Batafsil">
-                            <IconButton size="small">
+                            <IconButton color="info" size="small">
                               <Info />
                             </IconButton>
                           </Tooltip>
                           <Tooltip title="Tahrirlash">
                             <IconButton
                               size="small"
+                              color="warning"
                               onClick={() => setEditingId(t.id)}
                             >
                               <Edit />
@@ -490,11 +520,37 @@ const StudentPaymentsTab = ({ studentId }) => {
         onClose={closeActionPopup}
         referenceElement={actionPopup.referenceElement}
         title="Harakatlar"
-        actions={
-          [
-            /* ... actions for mobile view ... */
-          ]
-        }
+        actions={[
+          {
+            label: "Chek",
+            icon: Printer,
+            onClick: () => {},
+            className: "text-green-500",
+          },
+          {
+            label: "Batafsil",
+            icon: Info,
+            onClick: () => {},
+            className: "text-blue-500",
+          },
+          {
+            label: "Tahrirlash",
+            icon: Edit,
+            onClick: () => {
+              setEditingId(actionPopup.referenceElement.id);
+            },
+            className: "text-orange-500",
+          },
+          {
+            label: "O'chirish",
+            icon: Trash2,
+            onClick: (e) => {
+              e.preventDefault();
+              handleDelete(actionPopup.referenceElement.id);
+            },
+            className: "text-red-500",
+          },
+        ]}
       />
     </ThemeProvider>
   );
