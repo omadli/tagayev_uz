@@ -170,6 +170,22 @@ const AddPaymentModal = ({
   }, [isOpen, currentUser, setValue]);
 
   useEffect(() => {
+  if (isOpen) {
+    reset({
+      created_at: dayjs(),
+      comment: `${getCurrentMonthUzbek()} oyi uchun to'lov`,
+      student: initialStudent,
+      student_group: initialGroup ?? null,
+      payment_type_id: paymentTypes.length > 0 ? paymentTypes[0].value : "",
+      receiver_id:
+        receivers.find((r) => r.value === currentUser.user_id)?.value ?? "",
+      amount: "",
+    });
+  }
+}, [isOpen, initialStudent, initialGroup, paymentTypes, receivers, currentUser, reset]);
+
+
+  useEffect(() => {
     setValue("student_group", null);
     setBalance({ upcoming: { date: null, amount: 0 } });
     if (selectedStudent) {
@@ -245,9 +261,9 @@ const AddPaymentModal = ({
   }, [selectedGroup, paymentAmount]);
 
   const handleClose = () => {
-    reset({ created_at: new Date() });
     setBalance({ current: 0, after: 0 });
     onClose();
+    reset();
   };
 
   const onSubmit = async (data) => {
@@ -265,9 +281,14 @@ const AddPaymentModal = ({
       await api.post("/finance/transactions/", payload);
       toast.success("To'lov muvaffaqiyatli qo'shildi", { id: toastId });
       handleClose();
-      // Optionally refresh other data, e.g., student list
-    } catch (error) {
-      toast.error("Xatolik yuz berdi", { id: toastId });
+      window.location.reload();
+    } catch (err) {
+      const errorData = err.response?.data;
+      const msg =
+        typeof errorData === "object"
+          ? Object.values(errorData).flat().join(" ")
+          : "Xatolik yuz berdi";
+      toast.error(msg, { id: toastId });
     }
   };
 
@@ -429,9 +450,13 @@ const AddPaymentModal = ({
                         <InputLabel>To'lov turi</InputLabel>
                         <MuiSelect
                           {...field}
-                          value={field.value ?? (paymentTypes.length > 0)
+                          value={
+                            field.value !== undefined && field.value !== null
+                              ? field.value
+                              : paymentTypes.length > 0
                               ? paymentTypes[0].value
-                              : ""}
+                              : ""
+                          }
                           label="To'lov turi"
                           onChange={(e) => field.onChange(e.target.value)}
                         >
@@ -464,10 +489,11 @@ const AddPaymentModal = ({
                       <InputLabel>Qabul qiluvchi</InputLabel>
                       <MuiSelect
                         {...field}
-                        value={field.value ?? (receivers.length > 0)
+                        value={
+                          field.value ?? receivers.length > 0
                             ? receivers[0].value
                             : ""
-                          }
+                        }
                         label="Qabul qiluvchi"
                         onChange={(e) => field.onChange(e.target.value)}
                       >
