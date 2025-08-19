@@ -149,6 +149,9 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(
         source="student_group.student.full_name", read_only=True
     )
+    student_group_id = serializers.IntegerField(
+        source="student_group.id", read_only=True
+    )
     payment_type_id = serializers.IntegerField(source="payment_type.id", read_only=True)
     payment_type_name = serializers.CharField(
         source="payment_type.name",
@@ -179,6 +182,7 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             "group_name",
             "student_id",
             "student_name",
+            "student_group_id",
             # payment
             "payment_type_id",
             "payment_type_name",

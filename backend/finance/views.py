@@ -5,6 +5,7 @@ from rest_framework import generics
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from dateutil.relativedelta import relativedelta
+from rest_framework.filters import OrderingFilter
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 from users.permissions import IsAuthenticatedOrAdminForUnsafe
@@ -115,7 +116,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     """
 
     permission_classes = [IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
+    filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = TransactionFilter
     ordering_fields = ['created_at', 'amount']
     ordering = ['-created_at']
