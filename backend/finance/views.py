@@ -119,7 +119,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = TransactionFilter
     ordering_fields = ['created_at', 'amount']
-    ordering = ['-created_at']
+    ordering = ['created_at']
 
     def get_serializer_class(self, *args, **kwargs):
         if self.action == "create":

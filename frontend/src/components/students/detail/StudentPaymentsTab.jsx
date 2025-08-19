@@ -75,7 +75,7 @@ const StudentPaymentsTab = ({ studentId }) => {
     // Default date range: from the earliest join date to today
     dateRange: [dayjs().subtract(1, "month"), dayjs()],
   });
-  const [ordering, setOrdering] = useState("-created_at"); // '-created_at' = newest first
+  const [ordering, setOrdering] = useState("created_at");
   const [actionPopup, setActionPopup] = useState({
     isOpen: false,
     data: null,
@@ -345,13 +345,13 @@ const StudentPaymentsTab = ({ studentId }) => {
             }
             startIcon={
               ordering.startsWith("-") ? (
-                <ArrowUp size={16} />
-              ) : (
                 <ArrowDown size={16} />
+              ) : (
+                <ArrowUp size={16} />
               )
             }
           >
-            {ordering.startsWith("-") ? "Avval yangilari" : "Avval eskilari"}
+            {ordering.startsWith("-") ? "Avval eskilari" : "Avval yangilari"}
           </Button>
         </div>
         {/* --- TRANSACTIONS TABLE --- */}
