@@ -212,7 +212,7 @@ const RoomsPage = () => {
           </button>
         </div>
       </div>
-      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
+      <div className="bg-white dark:bg-blue-800 rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
         <DataTable
           columns={columns}
           data={filteredRooms}

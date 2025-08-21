@@ -5,7 +5,7 @@ export const customStyles = {
   header: { style: { display: "none" } },
   headRow: {
     style: {
-      backgroundColor: "transparent",
+      backgroundColor: "white",
       borderBottomColor: "#e5e7eb",
       borderBottomWidth: "1px",
     },
@@ -41,7 +41,9 @@ export const customStyles = {
 export const darkThemeStyles = {
   ...customStyles,
   headRow: {
-    style: { ...customStyles.headRow.style, borderBottomColor: "#2F3B60" },
+    style: { ...customStyles.headRow.style, 
+      backgroundColor: "#1E40AF",
+      borderBottomColor: "#2F3B60" },
   }, // dark-tertiary
   headCells: {
     style: {

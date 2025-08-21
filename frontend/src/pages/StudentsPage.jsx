@@ -352,7 +352,9 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
       selector: (row) => row.full_name,
       sortable: true,
       cell: (row) => (
-        <div className="font-medium truncate" onClick={() => handleView(row)}>{row.full_name}</div>
+        <div className="font-medium truncate" onClick={() => handleView(row)}>
+          {row.full_name}
+        </div>
       ),
     },
     {
@@ -603,6 +605,7 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
             setIsPaymentModalOpen(false);
             setSelectedStudent(null);
           }}
+          refreshData={fetchStudents}
           // --- PASS THE PRE-SELECTED STUDENT AS A PROP ---
           initialStudent={{
             value: selectedStudent.id,

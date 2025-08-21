@@ -219,6 +219,7 @@ const StudentDetailPage = () => {
             value: student.id,
             label: `${student.full_name} (+${student.phone_number})`,
           }}
+          refreshData={fetchStudentDetails}
         />
       )}
     </ThemeProvider>

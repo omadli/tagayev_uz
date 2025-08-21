@@ -24,6 +24,7 @@ import { BiArchiveIn, BiArchiveOut } from "react-icons/bi";
 import { useSettings } from "../context/SettingsContext";
 import { useAuth } from "../context/AuthContext";
 import clsx from "clsx";
+import dayjs from "dayjs";
 import Select from "react-select";
 import { Link } from "react-router-dom";
 
@@ -179,11 +180,10 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
   };
 
   const handleView = (group) => {
-    if(group && group.id){
-      navigate(`/${ isTeacherMyGroupsPage ? 'mygroups': 'groups'}/${group.id}`);
+    if (group && group.id) {
+      navigate(`/${isTeacherMyGroupsPage ? "mygroups" : "groups"}/${group.id}`);
     }
-  }
-    
+  };
 
   const handleEdit = (group) => {
     setSelectedGroup(group);
@@ -261,7 +261,10 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
         selector: (row) => row.name,
         sortable: true,
         cell: (row) => (
-          <div className="flex items-center space-x-3 py-2" onClick={() => handleView(row)}>
+          <div
+            className="flex items-center space-x-3 py-2"
+            onClick={() => handleView(row)}
+          >
             <span
               style={{ backgroundColor: row.color }}
               className="w-4 h-4 rounded-full flex-shrink-0 border border-gray-300 dark:border-gray-600"
@@ -451,7 +454,7 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-dark-secondary rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
+      <div className="bg-white dark:bg-blue-800 rounded-lg shadow-md border border-gray-200 dark:border-dark-tertiary">
         <DataTable
           columns={columns}
           data={groups}

@@ -72,12 +72,30 @@ const schema = yup.object().shape({
     ),
 });
 
+const defaultValues = {
+  student: "",
+  group: "",
+  amount: "",
+  payment_type: "",
+  receiver: "",
+  comment: "",
+};
+
+function cleanNumber(value) {
+  if (value == null || value === "") return 0;
+  const num = parseFloat(value);
+  return Number.isInteger(num) ? parseInt(num, 10) : num;
+}
+
 const AddPaymentModal = ({
   isOpen,
   onClose,
   initialStudent = null,
   initialGroup = null,
+  refreshData = null,
+  payment = null,
 }) => {
+  const isEditMode = Boolean(payment);
   const { user: currentUser } = useAuth();
   const { theme, selectedBranchId } = useSettings(); // Get current theme
   const muiTheme = getMuiTheme(theme); // Create the appropriate MUI theme
@@ -91,7 +109,6 @@ const AddPaymentModal = ({
   });
 
   const {
-    register,
     control,
     handleSubmit,
     reset,
@@ -111,6 +128,21 @@ const AddPaymentModal = ({
   const selectedGroup = watch("student_group");
   const paymentAmount = watch("amount");
 
+  useEffect(() => {
+    if (payment) {
+      reset({
+        student: payment.student_id || "",
+        group: payment.group_id || "",
+        amount: payment.amount || "",
+        payment_type: payment.payment_type_id || "",
+        receiver: payment.receiver_id || "",
+        comment: payment.comment || "",
+      });
+    } else {
+      reset(defaultValues);
+    }
+  }, [payment, reset]);
+
   // Function to load student options from API
   const loadStudentOptions = (query, callback) => {
     api
@@ -126,146 +158,134 @@ const AddPaymentModal = ({
       });
   };
 
-  // Fetch data for dropdowns when modal opens
+  // 🔹 Load dropdown data once per modal open
   useEffect(() => {
-    if (isOpen) {
-      // Fetch Payment Types
-      api.get("/finance/payment-types/?is_active=true").then((res) => {
-        const paymentTypeOptions = res.data.map((pt) => ({
-          value: pt.id,
-          label: pt.name,
-        }));
-        setPaymentTypes(paymentTypeOptions);
-        if (paymentTypeOptions.length > 0) {
-          setValue("payment_type_id", paymentTypeOptions[0].value);
-        }
-      });
+    if (!isOpen) return;
 
-      // Fetch Receivers (all staff)
-      api.get("/users/users/?is_archived=false").then((res) => {
-        const users = (res.data.results || res.data).filter(
-          (u) => u.is_teacher || u.is_admin || u.is_ceo
-        );
-        const sortedUsers = users.sort((a, b) => {
-          if (a.id === currentUser.user_id) return -1;
-          if (b.id === currentUser.user_id) return 1;
-          if (a.is_ceo && !b.is_ceo) return -1;
-          if (b.is_ceo && !a.is_ceo) return 1;
-          return a.full_name.localeCompare(b.full_name);
-        });
-        const receiverOptions = sortedUsers.map((u) => ({
-          value: u.id,
-          label: `${u.full_name} +${u.phone_number}`,
-        }));
-        setReceivers(receiverOptions);
-        // Set default receiver
-        const defaultReceiver = receiverOptions.find(
-          (r) => r.value === currentUser.user_id
-        );
-        if (defaultReceiver) {
-          setValue("receiver_id", defaultReceiver.value);
-        }
-      });
-    }
-  }, [isOpen, currentUser, setValue]);
+    // Payment Types
+    api.get("/finance/payment-types/?is_active=true").then((res) => {
+      const opts = res.data.map((pt) => ({ value: pt.id, label: pt.name }));
+      setPaymentTypes(opts);
 
+      if (!isEditMode && opts.length > 0) {
+        setValue("payment_type_id", opts[0].value);
+      }
+    });
+
+    // Receivers
+    api.get("/users/users/?is_archived=false").then((res) => {
+      const users = (res.data.results || res.data).filter(
+        (u) => u.is_teacher || u.is_admin || u.is_ceo
+      );
+      const sorted = users.sort((a, b) => {
+        if (a.id === currentUser.user_id) return -1;
+        if (b.id === currentUser.user_id) return 1;
+        if (a.is_ceo && !b.is_ceo) return -1;
+        if (b.is_ceo && !a.is_ceo) return 1;
+        return a.full_name.localeCompare(b.full_name);
+      });
+      const opts = sorted.map((u) => ({
+        value: u.id,
+        label: `${u.full_name} +${u.phone_number}`,
+      }));
+      setReceivers(opts);
+
+      if (!isEditMode) {
+        const me = opts.find((r) => r.value === currentUser.user_id);
+        if (me) setValue("receiver_id", me.value);
+      }
+    });
+  }, [isOpen, isEditMode, currentUser, setValue]);
+
+  // 🔹 Prefill form when switching add/edit
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    if (isEditMode && payment) {
+      reset({
+        student: { value: payment.student_id, label: payment.student_name },
+        student_group: payment.student_group_id,
+        amount: cleanNumber(payment.amount),
+        created_at: dayjs(payment.created_at),
+        payment_type_id: payment.payment_type_id,
+        receiver_id: payment.receiver_id,
+        comment: payment.comment,
+      });
+    } else {
       reset({
         created_at: dayjs(),
         comment: `${getCurrentMonthUzbek()} oyi uchun to'lov`,
         student: initialStudent,
         student_group: initialGroup ?? null,
-        payment_type_id: paymentTypes.length > 0 ? paymentTypes[0].value : "",
+        payment_type_id: paymentTypes[0]?.value || "",
         receiver_id:
           receivers.find((r) => r.value === currentUser.user_id)?.value ?? "",
         amount: "",
       });
     }
-  }, [
-    isOpen,
-    initialStudent,
-    initialGroup,
-    paymentTypes,
-    receivers,
-    currentUser,
-    reset,
-  ]);
+  }, [isOpen, isEditMode, payment, reset]); // 👈 no paymentTypes/receivers here
 
+  // 🔹 When student changes → load enrollments
   useEffect(() => {
-    setValue("student_group", null);
-    setBalance({ upcoming: { date: null, amount: 0 } });
-    if (selectedStudent) {
-      api
-        .get(`/core/student-enrollments/?student_id=${selectedStudent.value}`)
-        .then((res) => {
-          const enrollmentOptions = res.data.map((en) => ({
-            value: en.id,
-            label: `${en.group_name} (${en.teacher_name})`,
-            balance: en.balance,
-            price: en.effective_price,
-            // Store the new upcoming payment info
-            next_due_date: en.next_due_date,
-            next_due_amount: en.next_due_amount,
-          }));
-          setEnrollments(enrollmentOptions);
-          if (enrollmentOptions.length === 1) {
-            const singleEnrollment = enrollmentOptions[0];
-            setValue("student_group", singleEnrollment);
-            // Auto-fill amount based on balance
-            const amountToPay =
-              singleEnrollment.balance < 0
-                ? Math.abs(singleEnrollment.balance)
-                : singleEnrollment.price;
-            setValue("amount", amountToPay);
-          }
-        });
-    } else {
+    if (!selectedStudent?.value) {
       setEnrollments([]);
+      if (!isEditMode) setValue("student_group", null);
+      return;
     }
-  }, [selectedStudent, setValue]);
 
+    api
+      .get(`/core/student-enrollments/?student_id=${selectedStudent.value}`)
+      .then((res) => {
+        const opts = res.data.map((en) => ({
+          value: en.id,
+          label: `${en.group_name} (${en.teacher_name})`,
+          balance: cleanNumber(en.balance),
+          price: cleanNumber(en.effective_price),
+          next_due_date: en.next_due_date,
+          next_due_amount: cleanNumber(en.next_due_amount),
+        }));
+        setEnrollments(opts);
+
+        if (!isEditMode && opts.length === 1) {
+          setValue("student_group", opts[0], { shouldValidate: true });
+          setValue("amount", opts[0].price, { shouldValidate: true });
+        }
+        if (payment && opts.length > 0) {
+          setValue(
+            "student_group",
+            opts.find((e) => e.value === payment.student_group_id)
+          );
+        }
+      });
+  }, [selectedStudent, isEditMode, payment, setValue]);
+
+  // 🔹 Balance calculation
   useEffect(() => {
-    if (!initialGroup) return;
-    let filtered_enrollments = enrollments.filter(
-      (e) => e.value == initialGroup
-    );
-    if (filtered_enrollments.length == 0) return;
-    const enrollment = filtered_enrollments[0];
-    setValue("student_group", enrollment);
-    const amountToPay =
-      enrollment.balance < 0 ? Math.abs(enrollment.balance) : enrollment.price;
-    setValue("amount", amountToPay);
-  }, [enrollments, initialGroup]);
-
-  // --- UPDATED useEffect for balance and upcoming payment ---
-  useEffect(() => {
-    const currentBalance = selectedGroup
-      ? parseFloat(selectedGroup.balance)
-      : 0;
-    // amountToPay = selectedGroup.price;
-    // setValue("amount", amountToPay);
-    const amount = parseFloat(paymentAmount) || 0;
-
-    // Use a functional update to prevent state conflicts
-    setBalance((prev) => ({
-      ...prev, // Keep the upcoming payment info
-      current: currentBalance,
-      after: currentBalance + amount,
-    }));
-
-    if (selectedGroup) {
-      setBalance((prev) => ({
-        ...prev,
-        upcoming: {
-          date: selectedGroup.next_due_date,
-          amount: selectedGroup.next_due_amount,
-        },
-      }));
-    } else {
-      setBalance((prev) => ({ ...prev, upcoming: { date: null, amount: 0 } }));
+    if (!selectedGroup) {
+      setBalance({ current: 0, after: 0, upcoming: { date: null, amount: 0 } });
+      return;
     }
-  }, [selectedGroup, paymentAmount]);
+    if (!isEditMode) {
+      setValue("amount", cleanNumber(selectedGroup.price));
+    }
+
+    const current = cleanNumber(selectedGroup.balance);
+    const amount = cleanNumber(paymentAmount);
+
+    let after = current + amount;
+    if (isEditMode && payment) {
+      after = current - cleanNumber(payment.amount) + amount;
+    }
+
+    setBalance({
+      current,
+      after,
+      upcoming: {
+        date: selectedGroup.next_due_date,
+        amount: cleanNumber(selectedGroup.next_due_amount),
+      },
+    });
+  }, [selectedGroup, paymentAmount, isEditMode, payment, setValue]);
 
   const handleClose = () => {
     setBalance({ current: 0, after: 0 });
@@ -283,12 +303,20 @@ const AddPaymentModal = ({
       created_at: data.created_at.toISOString(),
     };
 
-    const toastId = toast.loading("To'lov qo'shilmoqda...");
+    const toastId = toast.loading(
+      isEditMode ? "To'lov yangilanmoqda..." : "To'lov qo'shilmoqda..."
+    );
     try {
-      await api.post("/finance/transactions/", payload);
-      toast.success("To'lov muvaffaqiyatli qo'shildi", { id: toastId });
+      if (isEditMode) {
+        await api.patch(`/finance/transactions/${payment.id}/`, payload);
+        toast.success("Muvaffaqiyatli yangilandi", { id: toastId });
+      } else {
+        await api.post("/finance/transactions/", payload);
+        toast.success("To'lov muvaffaqiyatli qo'shildi", { id: toastId });
+      }
       handleClose();
-      window.location.reload();
+      if (refreshData) refreshData();
+      else window.location.reload();
     } catch (err) {
       const errorData = err.response?.data;
       const msg =
@@ -313,14 +341,8 @@ const AddPaymentModal = ({
       backgroundColor: theme === "dark" ? "" : "white",
       borderColor: theme === "dark" ? "" : "#D1D5DB",
       color: theme === "dark" ? "white" : "black",
-      // ... other styles
     }),
-    // ... add styles for singleValue, input, etc. to match dark theme
   };
-  // const selectStyles = {
-  //   menu: (base) => ({ ...base, zIndex: 9999 }), // Very high z-index for the menu itself
-  //   menuPortal: (base) => ({ ...base, zIndex: 9999 }), // and for the portal container
-  // };
 
   return (
     <Portal>
@@ -369,9 +391,10 @@ const AddPaymentModal = ({
                   control={control}
                   render={({ field }) => (
                     <FormControl fullWidth>
-                      {/* <InputLabel>Guruh</InputLabel> */}
                       <SelectStandard
                         {...field}
+                        value={field.value}
+                        onChange={(val) => field.onChange(val)}
                         options={enrollments}
                         placeholder="Guruhni tanlang"
                         isDisabled={!selectedStudent || !!initialGroup}
@@ -543,7 +566,7 @@ const AddPaymentModal = ({
                   disabled={isSubmitting}
                   className="px-5 py-2.5 bg-blue-600 text-white rounded-lg"
                 >
-                  TO'LOVNI QO'SHISH
+                  {isEditMode ? "O'ZGARISHLARNI SAQLASH" : "TO'LOVNI QO'SHISH"}
                 </button>
               </div>
             </form>

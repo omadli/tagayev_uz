@@ -57,20 +57,6 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
     edit: null, // will hold enrollment object
   });
 
-  const [removeModal, setRemoveModal] = useState({
-    isOpen: false,
-    enrollment: null,
-  });
-  const [paymentModal, setPaymentModal] = useState({
-    isOpen: false,
-    student: null,
-    group: null,
-  });
-  const [editEnrollmentModal, setEditEnrollmentModal] = useState({
-    isOpen: false,
-    enrollment: null,
-  });
-
   const fetchAllEnrollments = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -414,6 +400,10 @@ const StudentListTab = ({ group, refreshGroupDetails }) => {
             label: `${modalState.payment.student.full_name} (+${modalState.payment.student.phone_number})`,
           }}
           initialGroup={modalState.payment.group}
+          refreshData={() => {
+            fetchAllEnrollments();
+            refreshGroupDetails();
+          }}
         />
       )}
 
