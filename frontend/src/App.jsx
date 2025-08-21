@@ -19,6 +19,7 @@ import BranchesPage from "./pages/BranchesPage";
 import PaymentTypesPage from "./pages/PaymentTypesPage";
 import GroupDetailPage from "./pages/GroupDetailPage";
 import MyGroupDetailPage from "./pages/MyGroupDetailPage";
+import PaymentsPage from "./pages/PaymentsPage";
 
 // This component protects all routes that require a logged-in user
 const PrivateRoute = () => {
@@ -61,6 +62,7 @@ function App() {
             <Route path="groups" element={<GroupsPage />} />
             <Route path="teachers" element={<TeachersPage />} />
             <Route path="/groups/:groupId" element={<GroupDetailPage />} />
+            <Route path="reports/payments" element={<PaymentsPage />} />
           </Route>
 
           {/* --- CEO Only Routes --- */}
