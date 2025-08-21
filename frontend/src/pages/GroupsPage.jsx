@@ -159,6 +159,18 @@ const GroupsPage = ({ isTeacherMyGroupsPage = false }) => {
     return () => clearTimeout(handler);
   }, [fetchGroups]);
 
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams();
+    // Go through the filters state and add each non-empty value to the search params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (key != "branch" && value) {
+        newSearchParams.set(key, String(value));
+      }
+    });
+    // Use 'replace' to avoid bloating the browser history on every filter change
+    setSearchParams(newSearchParams, { replace: true });
+  }, [filters, setSearchParams]);
+
   // --- EVENT HANDLERS ---
   const handleFilterChange = (name, selectedOption) => {
     setFilters((prev) => ({

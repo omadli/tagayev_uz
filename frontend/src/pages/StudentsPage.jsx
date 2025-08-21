@@ -147,6 +147,18 @@ const StudentsPage = ({ isMyStudentsPage = false }) => {
     fetchStudents();
   }, [fetchStudents]);
 
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams();
+    // Go through the filters state and add each non-empty value to the search params
+    Object.entries(filters).forEach(([key, value]) => {
+      if (key!= "branch" && value) {
+        newSearchParams.set(key, String(value));
+      }
+    });
+    // Use 'replace' to avoid bloating the browser history on every filter change
+    setSearchParams(newSearchParams, { replace: true });
+  }, [filters, setSearchParams]);
+
   const groupStatusOptions = [
     { value: "active", label: "Faol" },
     { value: "inactive", label: "Faol Emas" }, // 'Inactive' in Uzbek

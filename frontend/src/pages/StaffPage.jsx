@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import api from "../services/api";
 import toast from "react-hot-toast";
 import DataTable from "react-data-table-component";
@@ -27,18 +28,16 @@ import {
   paginationComponentOptions,
   ProgressComponent,
 } from "../data/dataTableStyles.jsx";
-import Avatar from '@mui/material/Avatar';
-import {stringAvatar} from "../components/ui/Avatar";
+import Avatar from "@mui/material/Avatar";
+import { stringAvatar } from "../components/ui/Avatar";
 
 const StaffPage = () => {
   // --- STATE MANAGEMENT ---
   const { theme } = useSettings();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState([]);
   const [counts, setCounts] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [showArchived, setShowArchived] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
   const [selectedRows, setSelectedRows] = useState([]);
 
   // State for modals and popups
@@ -51,12 +50,18 @@ const StaffPage = () => {
     referenceElement: null,
   });
 
+  const [filters, setFilters] = useState({
+    search: searchParams.get("search") || "",
+    is_archived: searchParams.get("is_archived") === "true",
+    role: searchParams.get("role") || "all",
+  });
+
   // --- DATA FETCHING ---
   const fetchUsers = useCallback(async () => {
     setIsLoading(true);
-    let params = { is_archived: showArchived };
-    if (activeFilter !== "all") {
-      params[`is_${activeFilter}`] = true;
+    let params = { is_archived: filters.is_archived };
+    if (filters.role !== "all") {
+      params[`is_${filters.role}`] = true;
     }
     try {
       const response = await api.get("/users/users/", { params });
@@ -66,7 +71,7 @@ const StaffPage = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [showArchived, activeFilter]);
+  }, [filters]);
 
   // Fetch the role counts once when the component mounts
   useEffect(() => {
@@ -85,15 +90,26 @@ const StaffPage = () => {
     return () => clearTimeout(handler);
   }, [fetchUsers]);
 
+  useEffect(() => {
+    const newSearchParams = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        newSearchParams.set(key, String(value));
+      }
+    });
+    setSearchParams(newSearchParams, { replace: true });
+  }, [filters, setSearchParams]);
+
   // Client-side filtering logic based on the search query
   const filteredUsers = useMemo(() => {
+    const searchQuery = filters.search;
     if (!searchQuery) return users;
     return users.filter(
       (user) =>
         user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         user.phone_number.toString().includes(searchQuery)
     );
-  }, [users, searchQuery]);
+  }, [users, filters]);
 
   const handleRowSelected = useCallback((state) => {
     setSelectedRows(state.selectedRows);
@@ -153,10 +169,13 @@ const StaffPage = () => {
     if (num === null || num === undefined) return "-";
     return new Intl.NumberFormat("fr-FR").format(num) + " so'm";
   };
-  const formatPhoneNumber = n => {
-  const p = n.toString();
-  return `+${p.slice(0,3)} (${p.slice(3,5)}) ${p.slice(5,8)}-${p.slice(8,10)}-${p.slice(10,12)}`;
-};
+  const formatPhoneNumber = (n) => {
+    const p = n.toString();
+    return `+${p.slice(0, 3)} (${p.slice(3, 5)}) ${p.slice(5, 8)}-${p.slice(
+      8,
+      10
+    )}-${p.slice(10, 12)}`;
+  };
   const formatDate = (dateStr) => {
     if (!dateStr) return "-";
     return new Date(dateStr).toLocaleDateString("en-GB");
@@ -254,14 +273,16 @@ const StaffPage = () => {
   ];
 
   const FilterButton = ({ filterKey, label }) => {
-    const currentCounts = showArchived ? counts?.archived : counts?.active;
+    const currentCounts = filters.is_archived
+      ? counts?.archived
+      : counts?.active;
     const count = currentCounts ? currentCounts[filterKey] : 0;
     return (
       <button
-        onClick={() => setActiveFilter(filterKey)}
+        onClick={() => setFilters((prev) => ({ ...prev, role: filterKey }))}
         className={clsx(
           "px-4 py-2 text-sm font-medium rounded-md border whitespace-nowrap",
-          activeFilter === filterKey
+          filters.role === filterKey
             ? "bg-blue-600 text-white"
             : "bg-white dark:bg-gray-800 ..."
         )}
@@ -288,7 +309,10 @@ const StaffPage = () => {
             />
             <input
               type="text"
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={filters.search}
+              onChange={(e) =>
+                setFilters((prev) => ({ ...prev, search: e.target.value }))
+              }
               placeholder="Qidirish..."
               className="pl-10 pr-4 py-2 border rounded-lg w-full sm:w-64 bg-white dark:bg-gray-700"
             />
@@ -330,19 +354,19 @@ const StaffPage = () => {
           </label>
           <button
             id="archive-toggle"
-            onClick={() => setShowArchived(!showArchived)}
+            onClick={() => setFilters(prev => ({...prev, is_archived: !prev.is_archived}))}
             type="button"
             role="switch"
-            aria-checked={showArchived}
+            aria-checked={filters.is_archived}
             className={clsx(
               "relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2",
-              showArchived ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-600"
+              filters.is_archived ? "bg-blue-600" : "bg-gray-200 dark:bg-gray-600"
             )}
           >
             <span
               className={clsx(
                 "inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out",
-                showArchived ? "translate-x-5" : "translate-x-0"
+                filters.is_archived ? "translate-x-5" : "translate-x-0"
               )}
             />
           </button>
