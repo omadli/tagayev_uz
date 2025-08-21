@@ -21,6 +21,7 @@ export const statsMapping = [
     title: "Faol Lidlar",
     icon: Users,
     color: "bg-green-500",
+    link: "/leads",
     tooltip: "Hozirda faol bo'lgan lidlar ro'yxati.",
   },
   {
@@ -28,6 +29,7 @@ export const statsMapping = [
     title: "Guruhlar",
     icon: Box,
     color: "bg-orange-500",
+    link: "/groups",
     tooltip: "O'quv markazidagi mavjud guruhlar soni.",
   },
   {
@@ -42,6 +44,7 @@ export const statsMapping = [
     title: "Qarzdorlar",
     icon: AlertTriangle,
     color: "bg-red-600",
+    link: "/students?payment_status=debtor",
     tooltip: "Umumiy qarzdor o'quvchilar soni",
   },
   {
@@ -49,13 +52,15 @@ export const statsMapping = [
     title: "To'lovi yaqin",
     icon: Clock,
     color: "bg-yellow-500",
-    tooltip: "To'lov qilishiga 7 kundan kam qolgan o'quvchilar soni",
+    link: "/students?payment_status=due_soon",
+    tooltip: "To'lov qilishiga 5 kundan kam qolgan o'quvchilar soni",
   },
   {
     key: "active_students",
     title: "Faol o'quvchilar",
     icon: UserCheck,
     color: "bg-teal-500",
+    link: "/students?group_status=active",
     tooltip: "Ayni vaqtda faol o'quvchilar soni",
   },
   {
@@ -70,6 +75,7 @@ export const statsMapping = [
     title: "O'qituvchilar",
     icon: FaChalkboardTeacher,
     color: "bg-blue-500",
+    link: "/teachers",
     tooltip: "Markazdagi faol o'qituvchilar soni.",
   },
   {
@@ -77,6 +83,7 @@ export const statsMapping = [
     title: "Adminlar",
     icon: Briefcase,
     color: "bg-indigo-500",
+    link: "/staff?role=admin",
     tooltip: "Markazdagi faol administratorlar soni.",
   },
 ];

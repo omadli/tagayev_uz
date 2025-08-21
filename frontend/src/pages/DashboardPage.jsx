@@ -65,6 +65,7 @@ const DashboardPage = () => {
                   value={stats[stat.key]}
                   icon={stat.icon}
                   color={stat.color}
+                  link={stat.link}
                   tooltip={stat.tooltip}
                   areNumbersVisible={areNumbersVisible}
                 />
