@@ -83,12 +83,13 @@ class DashboardStatsSerializer(serializers.Serializer):
 
 
 class StudentGroupInfoSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
     name = serializers.CharField(source="group.name", read_only=True)
     teacher = serializers.CharField(source="group.teacher.full_name", read_only=True)
 
     class Meta:
         model = StudentGroup
-        fields = ["name", "teacher"]
+        fields = ["id", "name", "teacher"]
 
 
 # The main serializer for the Students page

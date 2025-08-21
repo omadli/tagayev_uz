@@ -143,11 +143,20 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     group_name = serializers.CharField(
         source="student_group.group.name", read_only=True
     )
+    group_color = serializers.CharField(
+        source="student_group.group.color", read_only=True
+    )
+    group_text_color = serializers.CharField(
+        source="student_group.group.text_color", read_only=True
+    )
     student_id = serializers.IntegerField(
         source="student_group.student.id", read_only=True
     )
     student_name = serializers.CharField(
         source="student_group.student.full_name", read_only=True
+    )
+    student_phone_number = serializers.IntegerField(
+        source="student_group.student.phone_number", read_only=True
     )
     student_group_id = serializers.IntegerField(
         source="student_group.id", read_only=True
@@ -160,6 +169,10 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
     receiver_id = serializers.IntegerField(source="receiver.id", read_only=True)
     receiver_name = serializers.CharField(
         source="receiver.full_name",
+        read_only=True,
+    )
+    receiver_phone_number = serializers.IntegerField(
+        source="receiver.phone_number",
         read_only=True,
     )
     created_by_id = serializers.IntegerField(source="created_by.id", read_only=True)
@@ -180,14 +193,18 @@ class TransactionDetailSerializer(serializers.ModelSerializer):
             # group & student
             "group_id",
             "group_name",
+            "group_color",
+            "group_text_color",
             "student_id",
             "student_name",
+            "student_phone_number",
             "student_group_id",
             # payment
             "payment_type_id",
             "payment_type_name",
             "receiver_id",
             "receiver_name",
+            "receiver_phone_number",
             # audit
             "created_by_id",
             "created_by_name",

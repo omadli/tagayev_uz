@@ -37,10 +37,6 @@ class StudentFilter(django_filters.FilterSet):
     teacher_id = django_filters.NumberFilter(
         field_name="group_memberships__group__teacher__id", distinct=True
     )
-
-    # Filter by group ID
-    group_id = django_filters.NumberFilter(field_name="group_memberships__group__id")
-
     class Meta:
         model = Student
         fields = ["branch", "payment_status", "group_status", "teacher_id", "group_id"]

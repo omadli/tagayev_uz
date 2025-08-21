@@ -122,7 +122,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
     ordering = ['created_at']
 
     def get_serializer_class(self, *args, **kwargs):
-        if self.action == "create":
+        if self.action in ["create", "update", "partial_update"]:
             return PaymentCreateSerializer
         return TransactionDetailSerializer
 
@@ -132,13 +132,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_ceo or user.is_admin:
             return Transaction.objects.select_related(
-                "student_group__group", "payment_type", "receiver"
+                "student_group__group", "payment_type", "receiver", "student_group__group__branch",
             ).all()
         elif user.is_teacher:
             # Teachers can only see transactions for students in their groups
             return Transaction.objects.filter(
                 student_group__group__teacher=user
-            ).select_related("student_group__group", "payment_type", "receiver")
+            ).select_related("student_group__group", "payment_type", "receiver", "student_group__group__branch",)
         return Transaction.objects.none()
 
     def get_serializer_context(self):
