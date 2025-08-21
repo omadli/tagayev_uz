@@ -28,6 +28,7 @@
     "lucide-react": "^0.525.0",
     "mui-color-input": "^7.0.0",
     "react": "^19.1.0",
+    "react-countup": "^6.5.3",
     "react-data-table-component": "^7.7.0",
     "react-datepicker": "^8.4.0",
     "react-dom": "^19.1.0",

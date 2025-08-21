@@ -34,7 +34,7 @@ export const statsMapping = [
   },
   {
     key: "remaining_debts",
-    title: "Qolgan qarzlar",
+    title: "Qarzlar",
     icon: TrendingDown,
     color: "bg-red-500",
     tooltip: "Umumiy o'quvchilarning qolgan qarzlari miqdori",

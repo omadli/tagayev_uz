@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import CountUp from "react-countup";
 
 const StatCard = ({
   title,
@@ -35,8 +36,17 @@ const StatCard = ({
         </p>
 
         {/* The number value (or '***') */}
-        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
-          {areNumbersVisible ? value : "***"}
+        <p className="text-xl font-bold text-gray-900 dark:text-white mt-1 whitespace-nowrap">
+          {areNumbersVisible ? (
+            // 2. Use the CountUp component instead of just rendering the value
+            <CountUp
+              end={value || 0} // The number to count up to
+              duration={1.5} // Animation duration in seconds
+              separator=" "
+            />
+          ) : (
+            "***"
+          )}
         </p>
       </div>
     </Link>
